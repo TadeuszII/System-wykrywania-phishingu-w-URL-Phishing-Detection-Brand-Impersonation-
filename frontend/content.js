@@ -40,6 +40,14 @@ const DECISION_META = {
   }
 };
 
+const ICONS = {
+  arrowRight: '<path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
+  back: '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
+  clock: '<path d="M12 6v6l4 2m5-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
+  externalLink: '<path d="M14 4h6v6m0-6-8 8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
+  settings: '<path d="M4 7h10m3 0h3M7 17h13M4 17h1m6-13v6m3 4v6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>'
+};
+
 function loadApi() {
   if (!guardyApiPromise) {
     guardyApiPromise = import(chrome.runtime.getURL("utils/api.js"));
@@ -126,6 +134,7 @@ function createPopupRoot() {
         position: fixed;
         z-index: 2147483647;
         width: 280px;
+        max-width: calc(100vw - 24px);
         padding: 16px;
         border: 1px solid rgba(210, 210, 215, 0.8);
         border-radius: 16px;
@@ -139,9 +148,37 @@ function createPopupRoot() {
         box-sizing: border-box;
       }
 
+      .guardy-popup.has-vt {
+        width: 560px;
+      }
+
       .guardy-popup.is-visible {
         opacity: 1;
         transform: translateY(0);
+      }
+
+      .guardy-result-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .guardy-popup.has-vt .guardy-result-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .guardy-vt-panel {
+        min-width: 0;
+        padding-left: 16px;
+        border-left: 1px solid rgba(210, 210, 215, 0.72);
+      }
+
+      .guardy-section-label {
+        margin: 0 0 14px;
+        color: #6e6e73;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
       }
 
       .guardy-header,
@@ -188,7 +225,8 @@ function createPopupRoot() {
 
       .guardy-message,
       .guardy-reasons,
-      .guardy-brand {
+      .guardy-brand,
+      .guardy-vt-copy {
         color: #6e6e73;
         font-size: 13px;
         line-height: 1.4;
@@ -220,10 +258,63 @@ function createPopupRoot() {
         border-top: 1px solid rgba(210, 210, 215, 0.72);
       }
 
+      .guardy-vt-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .guardy-vt-logo {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 6px;
+        background: #1d1d1f;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .guardy-vt-title {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 650;
+        line-height: 1.2;
+      }
+
+      .guardy-vt-count {
+        margin: 0 0 6px;
+        color: #1d1d1f;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .guardy-vt-copy {
+        margin: 0 0 12px;
+      }
+
+      .guardy-vt-categories {
+        margin: 0 0 14px;
+      }
+
+      .guardy-vt-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #1d1d1f;
+        font-size: 13px;
+        font-weight: 560;
+        text-decoration: none;
+      }
+
       .guardy-icon,
       .guardy-spinner,
       .guardy-brand-icon,
-      .guardy-action-icon {
+      .guardy-action-icon,
+      .guardy-vt-link-icon {
         width: 20px;
         height: 20px;
         flex: 0 0 auto;
@@ -295,22 +386,36 @@ function createPopupRoot() {
       }
 
       .decision-allow .guardy-icon,
-      .decision-allow .guardy-score {
+      .decision-allow .guardy-score,
+      .decision-allow .guardy-vt-title {
         color: #34c759;
       }
 
       .decision-warn .guardy-icon,
-      .decision-warn .guardy-score {
+      .decision-warn .guardy-score,
+      .decision-warn .guardy-vt-title {
         color: #ff9f0a;
       }
 
       .decision-block .guardy-icon,
-      .decision-block .guardy-score {
+      .decision-block .guardy-score,
+      .decision-block .guardy-vt-title {
         color: #ff3b30;
       }
 
       .decision-block {
         border-color: rgba(255, 59, 48, 0.28);
+      }
+
+      .guardy-vt-note {
+        margin: 12px 0 0;
+        padding: 10px;
+        border: 1px solid rgba(210, 210, 215, 0.78);
+        border-radius: 8px;
+        background: rgba(245, 245, 247, 0.86);
+        color: #6e6e73;
+        font-size: 13px;
+        line-height: 1.35;
       }
 
       @keyframes guardy-spin {
@@ -335,12 +440,15 @@ function createPopupRoot() {
         .guardy-domain,
         .guardy-message,
         .guardy-reasons,
-        .guardy-brand {
+        .guardy-brand,
+        .guardy-vt-copy,
+        .guardy-section-label {
           color: #98989d;
         }
 
         .guardy-divider,
-        .guardy-brand {
+        .guardy-brand,
+        .guardy-vt-panel {
           border-color: rgba(56, 56, 58, 0.95);
         }
 
@@ -351,8 +459,14 @@ function createPopupRoot() {
         .guardy-spinner,
         .guardy-icon,
         .guardy-brand-icon,
-        .guardy-action-icon {
+        .guardy-action-icon,
+        .guardy-vt-link-icon {
           color: #0a84ff;
+        }
+
+        .guardy-vt-count,
+        .guardy-vt-link {
+          color: #f5f5f7;
         }
 
         .guardy-action {
@@ -367,37 +481,64 @@ function createPopupRoot() {
         }
 
         .decision-allow .guardy-icon,
-        .decision-allow .guardy-score {
+        .decision-allow .guardy-score,
+        .decision-allow .guardy-vt-title {
           color: #30d158;
         }
 
         .decision-block .guardy-icon,
-        .decision-block .guardy-score {
+        .decision-block .guardy-score,
+        .decision-block .guardy-vt-title {
           color: #ff453a;
+        }
+
+        .guardy-vt-note {
+          border-color: rgba(56, 56, 58, 0.95);
+          background: rgba(44, 44, 46, 0.86);
+          color: #98989d;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .guardy-popup.has-vt .guardy-result-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .guardy-vt-panel {
+          padding-top: 16px;
+          padding-left: 0;
+          border-top: 1px solid rgba(210, 210, 215, 0.72);
+          border-left: 0;
         }
       }
     </style>
     <section class="guardy-popup" role="dialog" aria-live="polite" aria-label="Guardy scan result">
-      <div class="guardy-header">
-        <div class="guardy-row">
-          <svg class="guardy-icon guardy-spinner" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" opacity="0.25"></circle>
-            <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
-          </svg>
-          <h2 class="guardy-title">Sprawdzam link...</h2>
+      <div class="guardy-result-grid">
+        <div class="guardy-main-panel">
+          <p class="guardy-section-label" hidden>Nasz wynik</p>
+          <div class="guardy-header">
+            <div class="guardy-row">
+              <svg class="guardy-icon guardy-spinner" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" opacity="0.25"></circle>
+                <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+              </svg>
+              <h2 class="guardy-title">Sprawdzam link...</h2>
+            </div>
+            <strong class="guardy-score"></strong>
+          </div>
+          <p class="guardy-domain"></p>
+          <div class="guardy-divider"></div>
+          <p class="guardy-message">Guardy wysyla URL do lokalnego backendu.</p>
+          <ul class="guardy-reasons" hidden></ul>
+          <div class="guardy-brand" hidden>
+            <svg class="guardy-brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4.8 12.7 12.7 4.8l6.5 6.5-7.9 7.9a2 2 0 0 1-2.8 0l-3.7-3.7a2 2 0 0 1 0-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+              <path d="M8.5 8.5h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
+            </svg>
+            <span></span>
+          </div>
         </div>
-        <strong class="guardy-score"></strong>
-      </div>
-      <p class="guardy-domain"></p>
-      <div class="guardy-divider"></div>
-      <p class="guardy-message">Guardy wysyla URL do lokalnego backendu.</p>
-      <ul class="guardy-reasons" hidden></ul>
-      <div class="guardy-brand" hidden>
-        <svg class="guardy-brand-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4.8 12.7 12.7 4.8l6.5 6.5-7.9 7.9a2 2 0 0 1-2.8 0l-3.7-3.7a2 2 0 0 1 0-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
-          <path d="M8.5 8.5h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
-        </svg>
-        <span></span>
+        <aside class="guardy-vt-panel" hidden></aside>
       </div>
       <div class="guardy-actions"></div>
     </section>
@@ -408,6 +549,7 @@ function createPopupRoot() {
     host,
     shadow,
     popup: shadow.querySelector(".guardy-popup"),
+    sectionLabel: shadow.querySelector(".guardy-section-label"),
     title: shadow.querySelector(".guardy-title"),
     score: shadow.querySelector(".guardy-score"),
     domain: shadow.querySelector(".guardy-domain"),
@@ -415,6 +557,7 @@ function createPopupRoot() {
     reasons: shadow.querySelector(".guardy-reasons"),
     brand: shadow.querySelector(".guardy-brand"),
     brandText: shadow.querySelector(".guardy-brand span"),
+    vtPanel: shadow.querySelector(".guardy-vt-panel"),
     actions: shadow.querySelector(".guardy-actions"),
     icon: shadow.querySelector(".guardy-icon")
   };
@@ -423,8 +566,10 @@ function createPopupRoot() {
 function positionPopup(popup, link) {
   const rect = link.getBoundingClientRect();
   const spacing = 12;
-  const left = Math.min(Math.max(rect.left, spacing), window.innerWidth - 292);
-  const top = Math.min(rect.bottom + spacing, window.innerHeight - 140);
+  const popupWidth = Math.min(popup.offsetWidth || 280, window.innerWidth - (spacing * 2));
+  const popupHeight = Math.min(popup.offsetHeight || 140, window.innerHeight - (spacing * 2));
+  const left = Math.min(Math.max(rect.left, spacing), window.innerWidth - popupWidth - spacing);
+  const top = Math.min(rect.bottom + spacing, window.innerHeight - popupHeight - spacing);
 
   popup.style.left = `${left}px`;
   popup.style.top = `${Math.max(spacing, top)}px`;
@@ -490,32 +635,161 @@ function renderBrand(popup, matchedBrand) {
   popup.brand.hidden = false;
 }
 
+function openSettingsPage() {
+  window.open(chrome.runtime.getURL("settings.html"), "_blank", "noopener");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function showVirusTotalPanel(popup, state, vtResult = null) {
+  popup.popup.classList.add("has-vt");
+  popup.sectionLabel.hidden = false;
+  popup.vtPanel.hidden = false;
+
+  if (state === "missing-key") {
+    popup.vtPanel.innerHTML = `
+      <p class="guardy-section-label">VirusTotal</p>
+      <div class="guardy-vt-header">
+        <span class="guardy-vt-logo">VT</span>
+        <h3 class="guardy-vt-title">Brak klucza API</h3>
+      </div>
+      <p class="guardy-vt-copy">Dodaj 64-znakowy klucz VirusTotal w ustawieniach, zeby porownac wynik.</p>
+      <button type="button" class="guardy-action">
+        <span>Otworz ustawienia</span>
+        <svg class="guardy-action-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS.settings}</svg>
+      </button>
+    `;
+    popup.vtPanel.querySelector("button").addEventListener("click", openSettingsPage);
+    return;
+  }
+
+  if (state === "loading") {
+    popup.vtPanel.innerHTML = `
+      <p class="guardy-section-label">VirusTotal</p>
+      <div class="guardy-vt-header">
+        <svg class="guardy-icon guardy-spinner" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" opacity="0.25"></circle>
+          <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+        </svg>
+        <h3 class="guardy-vt-title">Sprawdzam VT...</h3>
+      </div>
+      <p class="guardy-vt-copy">Wynik VirusTotal jest informacyjny i nie zmienia decyzji Guardy.</p>
+    `;
+    return;
+  }
+
+  if (state === "error") {
+    popup.vtPanel.innerHTML = `
+      <p class="guardy-section-label">VirusTotal</p>
+      <div class="guardy-vt-header">
+        <span class="guardy-vt-logo">VT</span>
+        <h3 class="guardy-vt-title">Blad porownania</h3>
+      </div>
+      <p class="guardy-vt-copy">Nie udalo sie pobrac wyniku VirusTotal. Sprawdz klucz API i backend.</p>
+    `;
+    return;
+  }
+
+  const decision = DECISION_META[vtResult.vt_decision] || DECISION_META.WARN;
+  const categories = Array.isArray(vtResult.vt_categories) && vtResult.vt_categories.length > 0
+    ? vtResult.vt_categories.map(escapeHtml).join(", ")
+    : "brak";
+  const permalink = safeExternalUrl(vtResult.vt_permalink);
+
+  popup.vtPanel.innerHTML = `
+    <p class="guardy-section-label">VirusTotal</p>
+    <div class="guardy-vt-header ${decision.className}">
+      <span class="guardy-vt-logo">VT</span>
+      <h3 class="guardy-vt-title">${decision.title}</h3>
+    </div>
+    <p class="guardy-vt-count">${Number(vtResult.engines_flagged) || 0} / ${Number(vtResult.engines_total) || 0}</p>
+    <p class="guardy-vt-copy">silnikow zglosilo zagrozenie</p>
+    <p class="guardy-vt-copy guardy-vt-categories">Kategorie: ${categories}</p>
+    ${permalink ? `
+      <a class="guardy-vt-link" href="${permalink}" target="_blank" rel="noopener noreferrer">
+        <span>Link do raportu</span>
+        <svg class="guardy-vt-link-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS.externalLink}</svg>
+      </a>
+    ` : ""}
+    <p class="guardy-vt-note">Porownanie z VT nie zmienia wyniku Guardy.</p>
+  `;
+}
+
+function createVirusTotalAction(popup, url, link) {
+  return createAction("Porownaj z VirusTotal", ICONS.externalLink, {
+    onClick: async () => {
+      const api = await loadApi();
+      const settings = await api.getSettings();
+
+      popup.popup.classList.add("has-vt");
+      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+
+      if (!settings.vtKey) {
+        showVirusTotalPanel(popup, "missing-key");
+        window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+        return;
+      }
+
+      showVirusTotalPanel(popup, "loading");
+      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+
+      try {
+        const vtResult = await api.scanVT(url.href, settings.vtKey);
+        showVirusTotalPanel(popup, "result", vtResult);
+      } catch (error) {
+        showVirusTotalPanel(popup, "error");
+      }
+
+      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+    }
+  });
+}
+
 function renderAllowActions(popup, link, url) {
   popup.actions.append(
-    createAction("Otwórz link", '<path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Otworz link", ICONS.arrowRight, {
       primary: true,
       onClick: () => followLink(link, url)
     }),
-    createAction("Wróć", '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Wroc", ICONS.back, {
       onClick: closePopup
-    })
+    }),
+    createVirusTotalAction(popup, url, link)
   );
 }
 
 function renderWarnActions(popup, link, url) {
   popup.actions.append(
-    createAction("Przejdź mimo to", '<path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Przejdz mimo to", ICONS.arrowRight, {
       primary: true,
       onClick: () => followLink(link, url)
     }),
-    createAction("Wróć", '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Wroc", ICONS.back, {
       onClick: closePopup
-    })
+    }),
+    createVirusTotalAction(popup, url, link)
   );
 }
 
 function renderBlockActions(popup, link, url) {
-  const riskyButton = createAction("Rozumiem ryzyko (3s)", '<path d="M12 6v6l4 2m5-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+  const riskyButton = createAction("Rozumiem ryzyko (3s)", ICONS.clock, {
     disabled: true,
     onClick: () => followLink(link, url)
   });
@@ -525,9 +799,10 @@ function renderBlockActions(popup, link, url) {
 
   popup.actions.append(
     riskyButton,
-    createAction("Wróć", '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Wroc", ICONS.back, {
       onClick: closePopup
-    })
+    }),
+    createVirusTotalAction(popup, url, link)
   );
 
   let secondsLeft = 3;
