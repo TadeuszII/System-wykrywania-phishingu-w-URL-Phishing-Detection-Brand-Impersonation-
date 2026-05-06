@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.audit import append_scan_log
 from app.database import check_database, get_db, init_db
 from app.models import (
     AuditLog,
@@ -127,6 +128,7 @@ def save_scan_result(db: Session, payload: ScanRequest, result: ScanResult) -> N
             matched_brand=result.matched_brand,
         )
     )
+    append_scan_log(db, payload, result)
     db.commit()
 
 
