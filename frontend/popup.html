@@ -1,1 +1,94 @@
-<!-- popup.html -->
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guardy</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header class="popup-header">
+        <div class="brand">
+          <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.2 19 6v5.6c0 4.4-2.9 7.5-7 9.2-4.1-1.7-7-4.8-7-9.2V6l7-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+          </svg>
+          <h1>Guardy</h1>
+        </div>
+        <button class="icon-button" id="openSettings" type="button" aria-label="Otworz ustawienia">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" fill="none" stroke="currentColor" stroke-width="1.7"></path>
+            <path d="M19.3 14.6a7.7 7.7 0 0 0 .1-1.1 7.7 7.7 0 0 0-.1-1.1l2-1.5-2-3.4-2.4 1a7.6 7.6 0 0 0-1.9-1.1L14.7 5h-4l-.4 2.4a7.6 7.6 0 0 0-1.9 1.1l-2.4-1-2 3.4 2 1.5a7.7 7.7 0 0 0-.1 1.1c0 .4 0 .8.1 1.1l-2 1.5 2 3.4 2.4-1a7.6 7.6 0 0 0 1.9 1.1l.4 2.4h4l.4-2.4a7.6 7.6 0 0 0 1.9-1.1l2.4 1 2-3.4-2.1-1.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path>
+          </svg>
+        </button>
+      </header>
+
+      <section class="panel">
+        <div class="row">
+          <div>
+            <p class="label">Status polaczenia</p>
+            <p class="muted" id="backendUrl">Backend: http://localhost:8000</p>
+          </div>
+          <span class="status-pill is-loading" id="healthStatus">
+            <span class="status-dot"></span>
+            <span>Sprawdzam</span>
+          </span>
+        </div>
+        <p class="muted compact" id="healthDetails"></p>
+      </section>
+
+      <section class="panel">
+        <p class="label">Biezaca domena</p>
+        <div class="domain-row">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"></circle>
+            <path d="M3.5 12h17M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+          </svg>
+          <span id="currentDomain">Nie wykryto domeny</span>
+        </div>
+      </section>
+
+      <section class="panel" id="lastScanCard">
+        <div class="row">
+          <p class="label">Ostatni wynik</p>
+          <strong id="lastScore">--/100</strong>
+        </div>
+        <div class="scan-row">
+          <svg id="lastDecisionIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+          </svg>
+          <div>
+            <strong id="lastDecision">Brak skanow</strong>
+            <p class="muted" id="lastScanMeta">Kliknij link na stronie, aby zapisac wynik.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel domain-toggle">
+        <div>
+          <p class="label">Rozszerzenie dla tej domeny</p>
+          <p class="muted" id="toggleHint">Skanowanie jest wlaczone.</p>
+        </div>
+        <button class="switch" id="domainToggle" type="button" role="switch" aria-checked="true">
+          <span></span>
+        </button>
+      </section>
+
+      <button class="settings-link" id="settingsLink" type="button">
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h10m3 0h3M7 17h13M4 17h1m6-13v6m3 4v6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+          </svg>
+          Ustawienia
+        </span>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+        </svg>
+      </button>
+
+      <p class="version">Guardy v1.0.0</p>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
