@@ -1,1 +1,27 @@
-{}
+[
+  {
+    "brand_name": "PayPal",
+    "official_domains": ["paypal.com", "paypal.me"],
+    "keywords": ["paypal", "pay-pal"]
+  },
+  {
+    "brand_name": "Google",
+    "official_domains": ["google.com", "gmail.com", "youtube.com", "accounts.google.com"],
+    "keywords": ["google", "gmail", "youtube"]
+  },
+  {
+    "brand_name": "Microsoft",
+    "official_domains": ["microsoft.com", "outlook.com", "live.com", "office.com"],
+    "keywords": ["microsoft", "outlook", "office", "office365"]
+  },
+  {
+    "brand_name": "Apple",
+    "official_domains": ["apple.com", "icloud.com", "itunes.com"],
+    "keywords": ["apple", "icloud", "itunes", "appleid"]
+  },
+  {
+    "brand_name": "PKO Bank Polski",
+    "official_domains": ["pkobp.pl", "ipko.pl"],
+    "keywords": ["pkobp", "ipko", "pko"]
+  }
+]

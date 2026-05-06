@@ -29,8 +29,14 @@ class DatabaseError(RuntimeError):
 def init_db() -> None:
     try:
         Base.metadata.create_all(bind=engine)
+        from app.seed import seed_database
+
+        with SessionLocal() as db:
+            seed_database(db)
     except SQLAlchemyError as exc:
         raise DatabaseError("Could not initialize database") from exc
+    except (OSError, ValueError, KeyError) as exc:
+        raise DatabaseError("Could not load seed data") from exc
 
 
 def get_db() -> Generator[Session, None, None]:
