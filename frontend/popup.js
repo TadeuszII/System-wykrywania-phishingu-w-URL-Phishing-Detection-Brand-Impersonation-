@@ -19,6 +19,10 @@ const elements = {
 let settings;
 let currentDomain = "";
 
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme === "auto" ? "" : theme;
+}
+
 function getDecisionIcon(decision) {
   if (decision === "ALLOW") {
     return `
@@ -99,7 +103,7 @@ async function renderHealth() {
     elements.healthDetails.textContent = `ML: ${health.ml_status || "unknown"}; marki: ${health.brands_count ?? 0}`;
   } catch (error) {
     setHealthStatus("is-offline", "Offline");
-    elements.healthDetails.textContent = "Backend nie odpowiada. Sprawdz Docker i port 8000.";
+    elements.healthDetails.textContent = "Backend nie odpowiada. Sprawdź Docker i port 8000.";
   }
 }
 
@@ -109,8 +113,8 @@ async function renderLastScan() {
   elements.lastScanCard.classList.remove("decision-allow", "decision-warn", "decision-block");
 
   if (!lastScan) {
-    elements.lastDecision.textContent = "Brak skanow";
-    elements.lastScanMeta.textContent = "Kliknij link na stronie, aby zapisac wynik.";
+    elements.lastDecision.textContent = "Brak skanów";
+    elements.lastScanMeta.textContent = "Kliknij link na stronie, aby zapisać wynik.";
     elements.lastScore.textContent = "--/100";
     elements.lastDecisionIcon.innerHTML = getDecisionIcon();
     return;
@@ -124,7 +128,7 @@ async function renderLastScan() {
 
   const domain = getHostname(lastScan.url) || "ostatni link";
   const time = formatTime(lastScan.saved_at || lastScan.timestamp);
-  elements.lastScanMeta.textContent = time ? `${domain}; dzis, ${time}` : domain;
+  elements.lastScanMeta.textContent = time ? `${domain}; dziś, ${time}` : domain;
 }
 
 function renderDomainToggle() {
@@ -132,7 +136,7 @@ function renderDomainToggle() {
     elements.currentDomain.textContent = "Nie wykryto domeny";
     elements.domainToggle.disabled = true;
     elements.domainToggle.setAttribute("aria-checked", "false");
-    elements.toggleHint.textContent = "Otworz strone http/https, aby ustawic domene.";
+    elements.toggleHint.textContent = "Otwórz stronę http/https, aby ustawić domenę.";
     return;
   }
 
@@ -140,7 +144,7 @@ function renderDomainToggle() {
   elements.currentDomain.textContent = currentDomain;
   elements.domainToggle.disabled = false;
   elements.domainToggle.setAttribute("aria-checked", String(!isDisabled));
-  elements.toggleHint.textContent = isDisabled ? "Skanowanie jest wylaczone." : "Skanowanie jest wlaczone.";
+  elements.toggleHint.textContent = isDisabled ? "Skanowanie jest wyłączone." : "Skanowanie jest włączone.";
 }
 
 async function toggleCurrentDomain() {
@@ -168,6 +172,7 @@ function openSettings() {
 
 async function initPopup() {
   settings = await getSettings();
+  setTheme(settings.theme);
   currentDomain = await getActiveDomain();
 
   renderDomainToggle();
@@ -183,5 +188,5 @@ elements.settingsLink.addEventListener("click", openSettings);
 
 initPopup().catch(() => {
   setHealthStatus("is-offline", "Offline");
-  elements.healthDetails.textContent = "Popup nie mogl pobrac danych rozszerzenia.";
+  elements.healthDetails.textContent = "Popup nie mógł pobrać danych rozszerzenia.";
 });

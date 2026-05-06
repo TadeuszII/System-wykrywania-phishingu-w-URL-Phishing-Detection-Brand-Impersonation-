@@ -117,9 +117,12 @@ function closePopup() {
   }, 150);
 }
 
-function createPopupRoot() {
+function createPopupRoot(theme = "auto") {
   const host = document.createElement("div");
   host.id = "guardy-link-popup";
+  if (theme !== "auto") {
+    host.dataset.theme = theme;
+  }
   const shadow = host.attachShadow({ mode: "open" });
 
   shadow.innerHTML = `
@@ -128,6 +131,14 @@ function createPopupRoot() {
         all: initial;
         color-scheme: light dark;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      :host([data-theme="dark"]) {
+        color-scheme: dark;
+      }
+
+      :host([data-theme="light"]) {
+        color-scheme: light;
       }
 
       .guardy-popup {
@@ -499,6 +510,88 @@ function createPopupRoot() {
         }
       }
 
+      :host([data-theme="dark"]) .guardy-popup {
+        border-color: rgba(56, 56, 58, 0.9);
+        background: rgba(28, 28, 30, 0.94);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        color: #f5f5f7;
+      }
+
+      :host([data-theme="dark"]) .guardy-score,
+      :host([data-theme="dark"]) .guardy-action {
+        color: #f5f5f7;
+      }
+
+      :host([data-theme="dark"]) .guardy-domain,
+      :host([data-theme="dark"]) .guardy-message,
+      :host([data-theme="dark"]) .guardy-reasons,
+      :host([data-theme="dark"]) .guardy-brand,
+      :host([data-theme="dark"]) .guardy-vt-copy,
+      :host([data-theme="dark"]) .guardy-section-label {
+        color: #98989d;
+      }
+
+      :host([data-theme="dark"]) .guardy-divider {
+        background: rgba(56, 56, 58, 0.95);
+      }
+
+      :host([data-theme="dark"]) .guardy-brand,
+      :host([data-theme="dark"]) .guardy-vt-panel,
+      :host([data-theme="dark"]) .guardy-action {
+        border-color: rgba(56, 56, 58, 0.95);
+      }
+
+      :host([data-theme="dark"]) .guardy-action {
+        background: rgba(44, 44, 46, 0.86);
+      }
+
+      :host([data-theme="dark"]) .guardy-action.primary {
+        border-color: #f5f5f7;
+        background: #f5f5f7;
+        color: #1d1d1f;
+      }
+
+      :host([data-theme="dark"]) .decision-allow .guardy-icon,
+      :host([data-theme="dark"]) .decision-allow .guardy-score,
+      :host([data-theme="dark"]) .decision-allow .guardy-vt-title {
+        color: #30d158;
+      }
+
+      :host([data-theme="dark"]) .decision-block .guardy-icon,
+      :host([data-theme="dark"]) .decision-block .guardy-score,
+      :host([data-theme="dark"]) .decision-block .guardy-vt-title {
+        color: #ff453a;
+      }
+
+      :host([data-theme="dark"]) .guardy-vt-note {
+        border-color: rgba(56, 56, 58, 0.95);
+        background: rgba(44, 44, 46, 0.86);
+        color: #98989d;
+      }
+
+      :host([data-theme="light"]) .guardy-popup {
+        border-color: rgba(210, 210, 215, 0.8);
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        color: #1d1d1f;
+      }
+
+      :host([data-theme="light"]) .guardy-score,
+      :host([data-theme="light"]) .guardy-action,
+      :host([data-theme="light"]) .guardy-vt-count,
+      :host([data-theme="light"]) .guardy-vt-link {
+        color: #1d1d1f;
+      }
+
+      :host([data-theme="light"]) .guardy-domain,
+      :host([data-theme="light"]) .guardy-message,
+      :host([data-theme="light"]) .guardy-reasons,
+      :host([data-theme="light"]) .guardy-brand,
+      :host([data-theme="light"]) .guardy-vt-copy,
+      :host([data-theme="light"]) .guardy-section-label {
+        color: #6e6e73;
+      }
+
       @media (max-width: 620px) {
         .guardy-popup.has-vt .guardy-result-grid {
           grid-template-columns: 1fr;
@@ -528,7 +621,7 @@ function createPopupRoot() {
           </div>
           <p class="guardy-domain"></p>
           <div class="guardy-divider"></div>
-          <p class="guardy-message">Guardy wysyla URL do lokalnego backendu.</p>
+      <p class="guardy-message">Guardy wysyła URL do lokalnego backendu.</p>
           <ul class="guardy-reasons" hidden></ul>
           <div class="guardy-brand" hidden>
             <svg class="guardy-brand-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -575,9 +668,9 @@ function positionPopup(popup, link) {
   popup.style.top = `${Math.max(spacing, top)}px`;
 }
 
-function showCheckingPopup(link, url) {
+function showCheckingPopup(link, url, theme) {
   activePopup?.host.remove();
-  activePopup = createPopupRoot();
+  activePopup = createPopupRoot(theme);
   activePopup.domain.textContent = url.hostname;
   positionPopup(activePopup.popup, link);
   requestAnimationFrame(() => activePopup.popup.classList.add("is-visible"));
@@ -613,7 +706,7 @@ function renderReasons(popup, reasons) {
   popup.reasons.replaceChildren();
   const visibleReasons = Array.isArray(reasons) && reasons.length > 0
     ? reasons.slice(0, 4)
-    : ["Brak dodatkowych powodow w odpowiedzi backendu"];
+    : ["Brak dodatkowych powodów w odpowiedzi backendu"];
 
   visibleReasons.forEach((reason) => {
     const item = document.createElement("li");
@@ -631,7 +724,7 @@ function renderBrand(popup, matchedBrand) {
     return;
   }
 
-  popup.brandText.textContent = `Podobienstwo do: ${matchedBrand}`;
+  popup.brandText.textContent = `Podobieństwo do: ${matchedBrand}`;
   popup.brand.hidden = false;
 }
 
@@ -670,9 +763,9 @@ function showVirusTotalPanel(popup, state, vtResult = null) {
         <span class="guardy-vt-logo">VT</span>
         <h3 class="guardy-vt-title">Brak klucza API</h3>
       </div>
-      <p class="guardy-vt-copy">Dodaj 64-znakowy klucz VirusTotal w ustawieniach, zeby porownac wynik.</p>
+      <p class="guardy-vt-copy">Dodaj 64-znakowy klucz VirusTotal w ustawieniach, żeby porównać wynik.</p>
       <button type="button" class="guardy-action">
-        <span>Otworz ustawienia</span>
+        <span>Otwórz ustawienia</span>
         <svg class="guardy-action-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS.settings}</svg>
       </button>
     `;
@@ -702,7 +795,7 @@ function showVirusTotalPanel(popup, state, vtResult = null) {
         <span class="guardy-vt-logo">VT</span>
         <h3 class="guardy-vt-title">Blad porownania</h3>
       </div>
-      <p class="guardy-vt-copy">Nie udalo sie pobrac wyniku VirusTotal. Sprawdz klucz API i backend.</p>
+      <p class="guardy-vt-copy">Nie udało się pobrać wyniku VirusTotal. Sprawdź klucz API i backend.</p>
     `;
     return;
   }
@@ -720,7 +813,7 @@ function showVirusTotalPanel(popup, state, vtResult = null) {
       <h3 class="guardy-vt-title">${decision.title}</h3>
     </div>
     <p class="guardy-vt-count">${Number(vtResult.engines_flagged) || 0} / ${Number(vtResult.engines_total) || 0}</p>
-    <p class="guardy-vt-copy">silnikow zglosilo zagrozenie</p>
+    <p class="guardy-vt-copy">silników zgłosiło zagrożenie</p>
     <p class="guardy-vt-copy guardy-vt-categories">Kategorie: ${categories}</p>
     ${permalink ? `
       <a class="guardy-vt-link" href="${permalink}" target="_blank" rel="noopener noreferrer">
@@ -728,12 +821,12 @@ function showVirusTotalPanel(popup, state, vtResult = null) {
         <svg class="guardy-vt-link-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS.externalLink}</svg>
       </a>
     ` : ""}
-    <p class="guardy-vt-note">Porownanie z VT nie zmienia wyniku Guardy.</p>
+    <p class="guardy-vt-note">Porównanie z VT nie zmienia wyniku Guardy.</p>
   `;
 }
 
 function createVirusTotalAction(popup, url, link) {
-  return createAction("Porownaj z VirusTotal", ICONS.externalLink, {
+  return createAction("Porównaj z VirusTotal", ICONS.externalLink, {
     onClick: async () => {
       const api = await loadApi();
       const settings = await api.getSettings();
@@ -764,11 +857,11 @@ function createVirusTotalAction(popup, url, link) {
 
 function renderAllowActions(popup, link, url) {
   popup.actions.append(
-    createAction("Otworz link", ICONS.arrowRight, {
+    createAction("Otwórz link", ICONS.arrowRight, {
       primary: true,
       onClick: () => followLink(link, url)
     }),
-    createAction("Wroc", ICONS.back, {
+    createAction("Wróć", ICONS.back, {
       onClick: closePopup
     }),
     createVirusTotalAction(popup, url, link)
@@ -777,11 +870,11 @@ function renderAllowActions(popup, link, url) {
 
 function renderWarnActions(popup, link, url) {
   popup.actions.append(
-    createAction("Przejdz mimo to", ICONS.arrowRight, {
+    createAction("Przejdź mimo to", ICONS.arrowRight, {
       primary: true,
       onClick: () => followLink(link, url)
     }),
-    createAction("Wroc", ICONS.back, {
+    createAction("Wróć", ICONS.back, {
       onClick: closePopup
     }),
     createVirusTotalAction(popup, url, link)
@@ -799,7 +892,7 @@ function renderBlockActions(popup, link, url) {
 
   popup.actions.append(
     riskyButton,
-    createAction("Wroc", ICONS.back, {
+    createAction("Wróć", ICONS.back, {
       onClick: closePopup
     }),
     createVirusTotalAction(popup, url, link)
@@ -851,15 +944,15 @@ function setPopupError(popup, error) {
   popup.popup.classList.add("decision-block");
   popup.icon.classList.remove("guardy-spinner");
   popup.icon.innerHTML = DECISION_META.BLOCK.icon;
-  popup.title.textContent = "Blad skanowania";
+  popup.title.textContent = "Błąd skanowania";
   popup.score.textContent = "";
   popup.message.hidden = false;
-  popup.message.textContent = error.message || "Backend nie zwrocil poprawnej odpowiedzi.";
+  popup.message.textContent = error.message || "Backend nie zwrócił poprawnej odpowiedzi.";
   popup.reasons.hidden = true;
   popup.brand.hidden = true;
   clearActions(popup);
   popup.actions.append(
-    createAction("Wróć", '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>', {
+    createAction("Wróć", ICONS.back, {
       onClick: closePopup
     })
   );
@@ -891,7 +984,7 @@ async function handleLinkClick(event) {
     return;
   }
 
-  const popup = showCheckingPopup(link, url);
+  const popup = showCheckingPopup(link, url, settings.theme);
 
   try {
     const result = await api.scanUrl(url.href);

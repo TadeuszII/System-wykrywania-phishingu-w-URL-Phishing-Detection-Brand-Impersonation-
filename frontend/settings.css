@@ -29,6 +29,34 @@ html[data-theme="dark"] {
   --shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
 }
 
+html[data-theme="dark"] .university-logo {
+  filter: none;
+}
+
+html[data-theme="dark"] .nav-list a.is-active,
+html[data-theme="dark"] .nav-list a:hover,
+html[data-theme="dark"] .nav-list button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .radio-stack label,
+html[data-theme="dark"] .ghost-button {
+  border-color: rgba(56, 56, 58, 0.95);
+}
+
+html[data-theme="light"] .nav-list a.is-active,
+html[data-theme="light"] .nav-list a:hover,
+html[data-theme="light"] .nav-list button:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .radio-stack label,
+html[data-theme="light"] .ghost-button {
+  border-color: rgba(210, 210, 215, 0.76);
+}
+
 html[data-theme="light"] {
   color-scheme: light;
   --bg: #ffffff;
@@ -42,12 +70,16 @@ html[data-theme="light"] {
   --shadow: 0 12px 34px rgba(0, 0, 0, 0.1);
 }
 
+html[data-theme="light"] .university-logo {
+  filter: invert(1);
+}
+
 body {
-  min-width: 920px;
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background 250ms ease, color 250ms ease;
 }
 
 button,
@@ -181,9 +213,10 @@ a {
 .card {
   padding: 22px;
   border: 1px solid rgba(210, 210, 215, 0.76);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
+  transition: background 250ms ease, border-color 250ms ease, box-shadow 250ms ease;
 }
 
 .history-card {
@@ -275,6 +308,7 @@ input:focus {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
+  transition: background 180ms ease, border-color 180ms ease;
 }
 
 .radio-stack strong,
@@ -392,6 +426,18 @@ input:focus {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 650;
+  transition: opacity 150ms ease, transform 100ms ease, background 150ms ease;
+}
+
+.ghost-button:hover,
+.primary-button:hover {
+  opacity: 0.86;
+}
+
+.ghost-button:active,
+.primary-button:active,
+.modal-close:active {
+  transform: scale(0.98);
 }
 
 .ghost-button {
@@ -459,6 +505,7 @@ input:focus {
 .university-logo {
   width: 82px;
   height: 82px;
+  filter: invert(1);
   object-fit: contain;
 }
 
@@ -519,4 +566,49 @@ input:focus {
   .ghost-button {
     border-color: rgba(56, 56, 58, 0.95);
   }
+
+  .university-logo {
+    filter: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .settings-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .content {
+    padding: 24px 18px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primary-button {
+    width: 100%;
+  }
+}
+
+html[data-theme="light"] .university-logo {
+  filter: invert(1);
+}
+
+html[data-theme="dark"] .university-logo {
+  filter: none;
 }

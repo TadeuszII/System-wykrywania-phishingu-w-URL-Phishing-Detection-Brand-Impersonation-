@@ -8,7 +8,7 @@
   </head>
   <body>
     <main class="settings-shell">
-      <aside class="sidebar" aria-label="Sekcje ustawien">
+      <aside class="sidebar" aria-label="Sekcje ustawień">
         <div class="brand">
           <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3.2 19 6v5.6c0 4.4-2.9 7.5-7 9.2-4.1-1.7-7-4.8-7-9.2V6l7-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
@@ -24,7 +24,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h10m3 0h3M7 17h13M4 17h1m6-13v6m3 4v6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
             </svg>
-            Ogolne
+            Ogólne
           </a>
           <a href="#virustotal">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -50,7 +50,7 @@
               <path d="M12 4v2m0 12v2M4 12h2m12 0h2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
               <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
             </svg>
-            Wyglad
+            Wygląd
           </a>
           <button id="aboutButton" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -66,7 +66,7 @@
         <header class="page-header">
           <div>
             <p class="eyebrow">Chrome Extension</p>
-            <h2>Panel ustawien Guardy</h2>
+            <h2>Panel ustawień Guardy</h2>
           </div>
           <p class="save-status" id="saveStatus" role="status"></p>
         </header>
@@ -79,7 +79,7 @@
                 <span>Backend API</span>
                 <input id="backendUrl" name="backendUrl" type="url" placeholder="http://localhost:8000" required>
               </label>
-              <p class="hint">Domyslnie Guardy laczy sie z Docker backendem na porcie 8000.</p>
+              <p class="hint">Domyślnie Guardy łączy się z Docker backendem na porcie 8000.</p>
             </section>
 
             <section class="card" id="virustotal">
@@ -88,7 +88,7 @@
                 <span>64-znakowy klucz hex</span>
                 <span class="input-shell">
                   <input id="vtKey" name="vtKey" type="password" spellcheck="false" autocomplete="off" placeholder="••••••••••••••••••••••••••••••••">
-                  <button id="toggleVtKey" type="button" aria-label="Pokaz klucz">
+                  <button id="toggleVtKey" type="button" aria-label="Pokaż klucz">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.7"></path>
                       <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"></circle>
@@ -105,14 +105,14 @@
                 <label>
                   <input type="radio" name="scanMode" value="all">
                   <span>
-                    <strong>Skanuj kazdy klik</strong>
-                    <small>Sprawdza wszystkie obslugiwane linki po kliknieciu.</small>
+                    <strong>Skanuj każdy klik</strong>
+                    <small>Sprawdza wszystkie obsługiwane linki po kliknięciu.</small>
                   </span>
                 </label>
                 <label>
                   <input type="radio" name="scanMode" value="external">
                   <span>
-                    <strong>Skanuj tylko linki zewnetrzne</strong>
+                    <strong>Skanuj tylko linki zewnętrzne</strong>
                     <small>Pomija linki w tej samej domenie.</small>
                   </span>
                 </label>
@@ -120,8 +120,8 @@
             </section>
 
             <section class="card" id="appearance">
-              <h3>Tryb wygladu</h3>
-              <div class="segmented" role="radiogroup" aria-label="Tryb wygladu">
+              <h3>Tryb wyglądu</h3>
+              <div class="segmented" role="radiogroup" aria-label="Tryb wyglądu">
                 <label>
                   <input type="radio" name="theme" value="light">
                   <span>Light</span>
@@ -135,20 +135,20 @@
                   <span>Dark</span>
                 </label>
               </div>
-              <p class="hint">Auto uzywa ustawien systemowych przegladarki.</p>
+              <p class="hint">Auto używa ustawień systemowych przeglądarki.</p>
             </section>
 
             <section class="card history-card" id="history">
               <div class="section-row">
                 <div>
                   <h3>Historia</h3>
-                  <p class="hint">Ostatnie 20 skanow zapisanych lokalnie.</p>
+                  <p class="hint">Ostatnie 20 skanów zapisanych lokalnie.</p>
                 </div>
                 <button class="ghost-button" id="clearHistory" type="button">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M5 7h14m-9 4v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"></path>
                   </svg>
-                  Wyczysc historie
+                  Wyczyść historię
                 </button>
               </div>
               <div class="history-list" id="historyList"></div>
@@ -160,13 +160,13 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 7h14m-9 4v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"></path>
               </svg>
-              Wyczysc dane
+              Wyczyść dane
             </button>
             <button class="ghost-button" id="exportHistory" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
               </svg>
-              Eksportuj historie
+              Eksportuj historię
             </button>
             <button class="primary-button" type="submit">Zapisz zmiany</button>
           </footer>
@@ -181,13 +181,13 @@
             <path d="m7 7 10 10m0-10L7 17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
           </svg>
         </button>
-        <img class="university-logo" src="icons/university-logo.svg" alt="Logo Filii Uniwersytetu w Bialymstoku w Wilnie">
+        <img class="university-logo" src="icons/university-logo.svg" alt="Logo Filii Uniwersytetu w Białymstoku w Wilnie">
         <h2 id="aboutTitle">Guardy</h2>
-        <p>Chrome Extension chroniacy przed phishingowymi linkami.</p>
+        <p>Chrome Extension chroniący przed phishingowymi linkami.</p>
         <dl>
           <div>
             <dt>Uczelnia</dt>
-            <dd>Filia Uniwersytetu w Bialymstoku w Wilnie</dd>
+            <dd>Filia Uniwersytetu w Białymstoku w Wilnie</dd>
           </div>
           <div>
             <dt>Strona</dt>

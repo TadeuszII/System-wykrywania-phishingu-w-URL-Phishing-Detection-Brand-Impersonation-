@@ -65,7 +65,7 @@ function validateVtKey() {
   elements.vtKeyHint.classList.remove("is-valid", "is-invalid");
 
   if (!value) {
-    elements.vtKeyHint.textContent = "Klucz jest opcjonalny, ale potrzebny do porownania z VirusTotal.";
+    elements.vtKeyHint.textContent = "Klucz jest opcjonalny, ale potrzebny do porównania z VirusTotal.";
     return true;
   }
 
@@ -75,7 +75,7 @@ function validateVtKey() {
     return true;
   }
 
-  elements.vtKeyHint.textContent = "Klucz musi miec dokladnie 64 znaki hex.";
+  elements.vtKeyHint.textContent = "Klucz musi mieć dokładnie 64 znaki hex.";
   elements.vtKeyHint.classList.add("is-invalid");
   return false;
 }
@@ -95,7 +95,7 @@ function renderHistory() {
   if (!history.length) {
     const empty = document.createElement("p");
     empty.className = "empty-history";
-    empty.textContent = "Historia skanow jest pusta.";
+    empty.textContent = "Historia skanów jest pusta.";
     elements.historyList.append(empty);
     return;
   }
@@ -222,5 +222,5 @@ elements.form.theme.forEach((input) => {
 });
 
 initSettings().catch(() => {
-  showStatus("Nie udalo sie wczytac ustawien.");
+  showStatus("Nie udało się wczytać ustawień.");
 });
