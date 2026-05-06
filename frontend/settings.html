@@ -1,1 +1,210 @@
-<!-- settings.html -->
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guardy Settings</title>
+    <link rel="stylesheet" href="settings.css">
+  </head>
+  <body>
+    <main class="settings-shell">
+      <aside class="sidebar" aria-label="Sekcje ustawień">
+        <div class="brand">
+          <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.2 19 6v5.6c0 4.4-2.9 7.5-7 9.2-4.1-1.7-7-4.8-7-9.2V6l7-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+          </svg>
+          <div>
+            <h1>Guardy</h1>
+            <p>Ustawienia</p>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a href="#general" class="is-active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h10m3 0h3M7 17h13M4 17h1m6-13v6m3 4v6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+            </svg>
+            Ogólne
+          </a>
+          <a href="#virustotal">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3.2 19 6v5.6c0 4.4-2.9 7.5-7 9.2-4.1-1.7-7-4.8-7-9.2V6l7-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+            VirusTotal
+          </a>
+          <a href="#scanning">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+              <path d="M12 8v4l3 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+            Skanowanie
+          </a>
+          <a href="#history">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 5h10M7 12h10M7 19h10M4 5h.01M4 12h.01M4 19h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.9"></path>
+            </svg>
+            Historia
+          </a>
+          <a href="#appearance">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4v2m0 12v2M4 12h2m12 0h2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            </svg>
+            Wygląd
+          </a>
+          <button id="aboutButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+              <path d="M12 11v6m0-9h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"></path>
+            </svg>
+            About
+          </button>
+        </nav>
+      </aside>
+
+      <section class="content">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Chrome Extension</p>
+            <h2>Panel ustawień Guardy</h2>
+          </div>
+          <p class="save-status" id="saveStatus" role="status"></p>
+        </header>
+
+        <form id="settingsForm">
+          <div class="grid">
+            <section class="card" id="general">
+              <h3>Adres backendu</h3>
+              <label class="field">
+                <span>Backend API</span>
+                <input id="backendUrl" name="backendUrl" type="url" placeholder="http://localhost:8000" required>
+              </label>
+              <p class="hint">Domyślnie Guardy łączy się z Docker backendem na porcie 8000.</p>
+            </section>
+
+            <section class="card" id="virustotal">
+              <h3>Klucz VirusTotal API</h3>
+              <label class="field input-with-button">
+                <span>64-znakowy klucz hex</span>
+                <span class="input-shell">
+                  <input id="vtKey" name="vtKey" type="password" spellcheck="false" autocomplete="off" placeholder="••••••••••••••••••••••••••••••••">
+                  <button id="toggleVtKey" type="button" aria-label="Pokaż klucz">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.7"></path>
+                      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"></circle>
+                    </svg>
+                  </button>
+                </span>
+              </label>
+              <p class="hint" id="vtKeyHint">Klucz jest zapisywany tylko lokalnie w chrome.storage.local.</p>
+            </section>
+
+            <section class="card" id="scanning">
+              <h3>Tryb skanowania</h3>
+              <div class="radio-stack">
+                <label>
+                  <input type="radio" name="scanMode" value="all">
+                  <span>
+                    <strong>Skanuj każdy klik</strong>
+                    <small>Sprawdza wszystkie obsługiwane linki po kliknięciu.</small>
+                  </span>
+                </label>
+                <label>
+                  <input type="radio" name="scanMode" value="external">
+                  <span>
+                    <strong>Skanuj tylko linki zewnętrzne</strong>
+                    <small>Pomija linki w tej samej domenie.</small>
+                  </span>
+                </label>
+              </div>
+            </section>
+
+            <section class="card" id="appearance">
+              <h3>Tryb wyglądu</h3>
+              <div class="segmented" role="radiogroup" aria-label="Tryb wyglądu">
+                <label>
+                  <input type="radio" name="theme" value="light">
+                  <span>Light</span>
+                </label>
+                <label>
+                  <input type="radio" name="theme" value="auto">
+                  <span>Auto</span>
+                </label>
+                <label>
+                  <input type="radio" name="theme" value="dark">
+                  <span>Dark</span>
+                </label>
+              </div>
+              <p class="hint">Auto używa ustawień systemowych przeglądarki.</p>
+            </section>
+
+            <section class="card history-card" id="history">
+              <div class="section-row">
+                <div>
+                  <h3>Historia</h3>
+                  <p class="hint">Ostatnie 20 skanów zapisanych lokalnie.</p>
+                </div>
+                <button class="ghost-button" id="clearHistory" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 7h14m-9 4v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"></path>
+                  </svg>
+                  Wyczyść historię
+                </button>
+              </div>
+              <div class="history-list" id="historyList"></div>
+            </section>
+          </div>
+
+          <footer class="actions-bar">
+            <button class="ghost-button danger" id="clearData" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 7h14m-9 4v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"></path>
+              </svg>
+              Wyczyść dane
+            </button>
+            <button class="ghost-button" id="exportHistory" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+              </svg>
+              Eksportuj historię
+            </button>
+            <button class="primary-button" type="submit">Zapisz zmiany</button>
+          </footer>
+        </form>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="aboutModal" hidden>
+      <section class="about-modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+        <button class="modal-close" id="closeAbout" type="button" aria-label="Zamknij About">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m7 7 10 10m0-10L7 17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+          </svg>
+        </button>
+        <img class="university-logo" src="icons/university-logo.svg" alt="Logo Filii Uniwersytetu w Białymstoku w Wilnie">
+        <h2 id="aboutTitle">Guardy</h2>
+        <p>Chrome Extension chroniący przed phishingowymi linkami.</p>
+        <dl>
+          <div>
+            <dt>Uczelnia</dt>
+            <dd>Filia Uniwersytetu w Białymstoku w Wilnie</dd>
+          </div>
+          <div>
+            <dt>Strona</dt>
+            <dd><a href="https://wilno.uwb.edu.pl" target="_blank" rel="noopener noreferrer">wilno.uwb.edu.pl</a></dd>
+          </div>
+          <div>
+            <dt>Autorzy</dt>
+            <dd>Vieslav Meckovski, Tadeus Zukovskij</dd>
+          </div>
+          <div>
+            <dt>Kierunek</dt>
+            <dd>Informatyka, 2026</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <script type="module" src="settings.js"></script>
+  </body>
+</html>
