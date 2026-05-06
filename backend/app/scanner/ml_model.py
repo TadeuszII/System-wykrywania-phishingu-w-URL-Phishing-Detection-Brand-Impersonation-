@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from ml.features import extract_features
+    from ml.features import FEATURE_NAMES_USED, extract_model_features
 except ModuleNotFoundError:
-    from backend.ml.features import extract_features
+    from backend.ml.features import FEATURE_NAMES_USED, extract_model_features
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 MODEL_PATH = BACKEND_DIR / "ml" / "model.pkl"
@@ -37,7 +37,7 @@ class MLModel:
             return FALLBACK_SCORE
 
         try:
-            features = [extract_features(url)]
+            features = build_feature_frame(url)
             if hasattr(self.model, "predict_proba"):
                 probability = self.model.predict_proba(features)[0][1]
                 return clamp_score(float(probability))
@@ -52,6 +52,16 @@ class MLModel:
 
 def clamp_score(value: float) -> float:
     return max(0.0, min(1.0, value))
+
+
+def build_feature_frame(url: str) -> Any:
+    values = extract_model_features(url)
+    try:
+        import pandas as pd
+
+        return pd.DataFrame([values], columns=FEATURE_NAMES_USED)
+    except Exception:
+        return [values]
 
 
 ml_model = MLModel()
