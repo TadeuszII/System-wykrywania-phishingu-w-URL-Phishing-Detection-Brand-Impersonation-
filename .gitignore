@@ -38,6 +38,7 @@ ENV/
 # ========================
 # ML / Data
 # ========================
+backend/guardy.db
 *.pkl
 *.pickle
 *.h5
