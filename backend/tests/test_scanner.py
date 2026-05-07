@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import tempfile
@@ -9,6 +10,7 @@ if TEST_DB.exists():
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
+BRANDS_SEED_PATH = BACKEND_DIR / "seed_data" / "brands.json"
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["ADMIN_API_KEY"] = "test_admin_key"
@@ -34,6 +36,11 @@ BRANDS = [
         "keywords": ["microsoft", "outlook"],
     },
 ]
+
+
+def load_seed_brands():
+    with BRANDS_SEED_PATH.open("r", encoding="utf-8") as file:
+        return json.load(file)
 
 
 def test_rules_allow_safe_url():
@@ -76,6 +83,72 @@ def test_brand_detection_finds_lookalike():
     result = detect_brand_impersonation("http://paypa1.com/login", BRANDS)
     assert result.matched_brand == "PayPal"
     assert result.brand_penalty > 0
+
+
+def test_brand_seed_has_at_least_100_unique_profiles():
+    brands = load_seed_brands()
+    brand_names = [brand["brand_name"] for brand in brands]
+
+    assert len(brands) >= 100
+    assert len(set(brand_names)) == len(brand_names)
+    for brand in brands:
+        assert brand["brand_name"]
+        assert brand["official_domains"]
+        assert brand["keywords"]
+
+
+def test_brand_detection_finds_delivery_brand_from_seed():
+    result = detect_brand_impersonation("http://dhl-tracking-update.xyz", load_seed_brands())
+    assert result.matched_brand == "DHL"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_crypto_brand_from_seed():
+    result = detect_brand_impersonation("http://binance-wallet-verify.xyz", load_seed_brands())
+    assert result.matched_brand == "Binance"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_polish_bank_from_seed():
+    result = detect_brand_impersonation("http://mbank-login-secure.xyz", load_seed_brands())
+    assert result.matched_brand == "mBank"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_misleading_subdomain_from_seed():
+    result = detect_brand_impersonation("http://microsoft.com.security-update.example.net", load_seed_brands())
+    assert result.matched_brand == "Microsoft"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_lithuanian_bank_from_seed():
+    result = detect_brand_impersonation("http://swedbank-login-secure.xyz", load_seed_brands())
+    assert result.matched_brand == "Swedbank Lithuania"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_lithuanian_fintech_from_seed():
+    result = detect_brand_impersonation("http://paysera-account-verify.xyz", load_seed_brands())
+    assert result.matched_brand == "Paysera"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_lithuanian_telco_from_seed():
+    result = detect_brand_impersonation("http://telia-bill-update.xyz", load_seed_brands())
+    assert result.matched_brand == "Telia Lithuania"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_finds_lithuanian_marketplace_from_seed():
+    result = detect_brand_impersonation("http://skelbiu-payment-confirm.xyz", load_seed_brands())
+    assert result.matched_brand == "Skelbiu.lt"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_ignores_lithuanian_official_bank_domain():
+    result = detect_brand_impersonation("https://www.seb.lt/", load_seed_brands())
+    assert result.brand_penalty == 0
+    assert result.matched_brand is None
 
 
 def test_scan_url_warns_on_invalid_url():
