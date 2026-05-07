@@ -68,7 +68,6 @@
             <p class="eyebrow">Chrome Extension</p>
             <h2>Panel ustawień Guardy</h2>
           </div>
-          <p class="save-status" id="saveStatus" role="status"></p>
         </header>
 
         <form id="settingsForm">
@@ -97,6 +96,13 @@
                 </span>
               </label>
               <p class="hint" id="vtKeyHint">Klucz jest zapisywany tylko lokalnie w chrome.storage.local.</p>
+              <label class="switch-row">
+                <span>
+                  <strong>Zawsze sprawdzaj z VirusTotal</strong>
+                  <small>Po skanie Guardy automatycznie pobierze informacyjny wynik VT, jeśli klucz jest zapisany.</small>
+                </span>
+                <input id="alwaysScanVirusTotal" name="alwaysScanVirusTotal" type="checkbox">
+              </label>
             </section>
 
             <section class="card" id="scanning">
@@ -168,7 +174,10 @@
               </svg>
               Eksportuj historię
             </button>
-            <button class="primary-button" type="submit">Zapisz zmiany</button>
+            <div class="save-cluster">
+              <p class="save-status" id="saveStatus" role="status"></p>
+              <button class="primary-button" type="submit">Zapisz zmiany</button>
+            </div>
           </footer>
         </form>
       </section>

@@ -1,4 +1,4 @@
-import { getHealth, getSettings, saveSettings } from "./utils/api.js";
+import { getHealth, getSettings, saveSettings, saveToHistory, scanUrl } from "./utils/api.js";
 
 const elements = {
   backendUrl: document.querySelector("#backendUrl"),
@@ -11,6 +11,15 @@ const elements = {
   lastScanCard: document.querySelector("#lastScanCard"),
   lastScanMeta: document.querySelector("#lastScanMeta"),
   lastScore: document.querySelector("#lastScore"),
+  manualDecision: document.querySelector("#manualDecision"),
+  manualDecisionIcon: document.querySelector("#manualDecisionIcon"),
+  manualResult: document.querySelector("#manualResult"),
+  manualResultMeta: document.querySelector("#manualResultMeta"),
+  manualScanButton: document.querySelector("#manualScanButton"),
+  manualScanForm: document.querySelector("#manualScanForm"),
+  manualScanMessage: document.querySelector("#manualScanMessage"),
+  manualScore: document.querySelector("#manualScore"),
+  manualUrl: document.querySelector("#manualUrl"),
   openSettings: document.querySelector("#openSettings"),
   settingsLink: document.querySelector("#settingsLink"),
   toggleHint: document.querySelector("#toggleHint")
@@ -166,6 +175,71 @@ async function toggleCurrentDomain() {
   renderDomainToggle();
 }
 
+function normalizeManualUrl(value) {
+  const rawValue = value.trim();
+
+  if (!rawValue) {
+    throw new Error("Wpisz URL do sprawdzenia.");
+  }
+
+  const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(rawValue)
+    ? rawValue
+    : `https://${rawValue}`;
+  const url = new URL(withProtocol);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Podaj URL http albo https.");
+  }
+
+  return url.href;
+}
+
+function renderManualResult(result, url) {
+  const decision = result.decision || "WARN";
+  elements.manualResult.hidden = false;
+  elements.manualResult.classList.remove("decision-allow", "decision-warn", "decision-block");
+  elements.manualResult.classList.add(`decision-${decision.toLowerCase()}`);
+  elements.manualDecision.textContent = decision;
+  elements.manualScore.textContent = `${Number(result.risk_score) || 0}/100`;
+  elements.manualDecisionIcon.innerHTML = getDecisionIcon(decision);
+  elements.manualResultMeta.textContent = getHostname(url) || url;
+}
+
+async function handleManualScan(event) {
+  event.preventDefault();
+
+  let url;
+  try {
+    url = normalizeManualUrl(elements.manualUrl.value);
+  } catch (error) {
+    elements.manualScanMessage.textContent = error.message;
+    elements.manualResult.hidden = true;
+    return;
+  }
+
+  elements.manualScanButton.disabled = true;
+  elements.manualScanButton.textContent = "Skanuję";
+  elements.manualScanMessage.textContent = "Guardy wysyła URL do backendu.";
+
+  try {
+    const result = await scanUrl(url);
+    await saveToHistory({
+      ...result,
+      url,
+      source: "manual_popup"
+    });
+    renderManualResult(result, url);
+    await renderLastScan();
+    elements.manualScanMessage.textContent = "Skan zakończony.";
+  } catch (error) {
+    elements.manualResult.hidden = true;
+    elements.manualScanMessage.textContent = error.message || "Backend offline albo brak odpowiedzi.";
+  } finally {
+    elements.manualScanButton.disabled = false;
+    elements.manualScanButton.textContent = "Skanuj";
+  }
+}
+
 function openSettings() {
   chrome.runtime.openOptionsPage();
 }
@@ -183,6 +257,7 @@ async function initPopup() {
 }
 
 elements.domainToggle.addEventListener("click", toggleCurrentDomain);
+elements.manualScanForm.addEventListener("submit", handleManualScan);
 elements.openSettings.addEventListener("click", openSettings);
 elements.settingsLink.addEventListener("click", openSettings);
 

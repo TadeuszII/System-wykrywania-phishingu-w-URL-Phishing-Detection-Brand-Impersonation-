@@ -55,6 +55,10 @@ button {
   font: inherit;
 }
 
+input {
+  font: inherit;
+}
+
 .popup-shell {
   display: grid;
   gap: 12px;
@@ -139,6 +143,64 @@ button {
 
 .panel {
   padding: 12px;
+}
+
+.manual-scan form {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-scan-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.manual-scan input {
+  min-width: 0;
+  height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.manual-scan input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14);
+}
+
+.manual-scan button {
+  min-width: 74px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  transition: opacity 150ms ease, transform 100ms ease;
+}
+
+.manual-scan button:hover {
+  opacity: 0.86;
+}
+
+.manual-scan button:active {
+  transform: scale(0.98);
+}
+
+.manual-scan button:disabled {
+  cursor: default;
+  opacity: 0.62;
+  transform: none;
+}
+
+.manual-result[hidden] {
+  display: none;
 }
 
 .label {
@@ -231,8 +293,20 @@ button {
 }
 
 .decision-block #lastDecisionIcon,
-.decision-block #lastScore {
+.decision-block #lastScore,
+.decision-block #manualDecisionIcon,
+.decision-block #manualScore {
   color: var(--block);
+}
+
+.decision-allow #manualDecisionIcon,
+.decision-allow #manualScore {
+  color: var(--allow);
+}
+
+.decision-warn #manualDecisionIcon,
+.decision-warn #manualScore {
+  color: var(--warn);
 }
 
 .switch {

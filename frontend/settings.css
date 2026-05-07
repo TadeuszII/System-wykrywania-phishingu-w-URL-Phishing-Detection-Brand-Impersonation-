@@ -41,6 +41,7 @@ html[data-theme="dark"] .nav-list button:hover {
 
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .radio-stack label,
+html[data-theme="dark"] .switch-row,
 html[data-theme="dark"] .ghost-button {
   border-color: rgba(56, 56, 58, 0.95);
 }
@@ -53,6 +54,7 @@ html[data-theme="light"] .nav-list button:hover {
 
 html[data-theme="light"] .card,
 html[data-theme="light"] .radio-stack label,
+html[data-theme="light"] .switch-row,
 html[data-theme="light"] .ghost-button {
   border-color: rgba(210, 210, 215, 0.76);
 }
@@ -301,7 +303,8 @@ input:focus {
   gap: 12px;
 }
 
-.radio-stack label {
+.radio-stack label,
+.switch-row {
   display: flex;
   gap: 12px;
   padding: 12px;
@@ -311,14 +314,57 @@ input:focus {
   transition: background 180ms ease, border-color 180ms ease;
 }
 
+.switch-row {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
 .radio-stack strong,
-.radio-stack small {
+.radio-stack small,
+.switch-row strong,
+.switch-row small {
   display: block;
 }
 
-.radio-stack small {
+.radio-stack small,
+.switch-row small {
   margin-top: 4px;
   color: var(--muted);
+}
+
+.switch-row input {
+  width: 46px;
+  height: 28px;
+  flex: 0 0 auto;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: background 160ms ease;
+}
+
+.switch-row input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: left 160ms ease;
+}
+
+.switch-row input:checked {
+  background: var(--text);
+}
+
+.switch-row input:checked::after {
+  left: 21px;
 }
 
 .segmented {
@@ -417,6 +463,34 @@ input:focus {
   margin-top: 18px;
   padding: 18px 0 0;
   border-top: 1px solid var(--border);
+}
+
+.save-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.save-status {
+  min-width: 140px;
+  margin: 0;
+  color: var(--allow);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: right;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.save-status.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.save-status.is-error {
+  color: var(--block);
 }
 
 .ghost-button,
@@ -563,6 +637,7 @@ input:focus {
 
   .card,
   .radio-stack label,
+  .switch-row,
   .ghost-button {
     border-color: rgba(56, 56, 58, 0.95);
   }
@@ -598,6 +673,17 @@ input:focus {
   .actions-bar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .save-cluster {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: 0;
+  }
+
+  .save-status {
+    min-width: 0;
+    text-align: left;
   }
 
   .primary-button {

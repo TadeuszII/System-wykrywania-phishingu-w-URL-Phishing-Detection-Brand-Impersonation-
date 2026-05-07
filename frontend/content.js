@@ -1,5 +1,9 @@
 let guardyApiPromise;
 let activePopup;
+let activeToast;
+
+const ALLOW_CACHE_MS = 5 * 60 * 1000;
+const safeAllowUrls = new Map();
 
 const SKIPPED_PROTOCOLS = new Set([
   "mailto:",
@@ -117,6 +121,41 @@ function closePopup() {
   }, 150);
 }
 
+function rememberAllowedUrl(url) {
+  safeAllowUrls.set(url.href, Date.now());
+}
+
+function wasRecentlyAllowed(url) {
+  const timestamp = safeAllowUrls.get(url.href);
+
+  if (!timestamp) {
+    return false;
+  }
+
+  if (Date.now() - timestamp > ALLOW_CACHE_MS) {
+    safeAllowUrls.delete(url.href);
+    return false;
+  }
+
+  safeAllowUrls.delete(url.href);
+  return true;
+}
+
+function closeToast() {
+  if (!activeToast) {
+    return;
+  }
+
+  const toastToClose = activeToast;
+  toastToClose.classList.remove("is-visible");
+  window.setTimeout(() => {
+    toastToClose.remove();
+    if (activeToast === toastToClose) {
+      activeToast = null;
+    }
+  }, 150);
+}
+
 function createPopupRoot(theme = "auto") {
   const host = document.createElement("div");
   host.id = "guardy-link-popup";
@@ -161,6 +200,36 @@ function createPopupRoot(theme = "auto") {
 
       .guardy-popup.has-vt {
         width: 560px;
+      }
+
+      .guardy-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #6e6e73;
+        cursor: pointer;
+        transition: background 150ms ease, color 150ms ease, transform 100ms ease;
+      }
+
+      .guardy-close:hover {
+        background: rgba(0, 0, 0, 0.06);
+        color: #1d1d1f;
+      }
+
+      .guardy-close:active {
+        transform: scale(0.96);
+      }
+
+      .guardy-close svg {
+        width: 16px;
+        height: 16px;
       }
 
       .guardy-popup.is-visible {
@@ -485,6 +554,15 @@ function createPopupRoot(theme = "auto") {
           background: rgba(44, 44, 46, 0.86);
         }
 
+        .guardy-close {
+          color: #98989d;
+        }
+
+        .guardy-close:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
+        }
+
         .guardy-action.primary {
           border-color: #f5f5f7;
           background: #f5f5f7;
@@ -543,6 +621,15 @@ function createPopupRoot(theme = "auto") {
 
       :host([data-theme="dark"]) .guardy-action {
         background: rgba(44, 44, 46, 0.86);
+      }
+
+      :host([data-theme="dark"]) .guardy-close {
+        color: #98989d;
+      }
+
+      :host([data-theme="dark"]) .guardy-close:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #f5f5f7;
       }
 
       :host([data-theme="dark"]) .guardy-action.primary {
@@ -606,6 +693,11 @@ function createPopupRoot(theme = "auto") {
       }
     </style>
     <section class="guardy-popup" role="dialog" aria-live="polite" aria-label="Guardy scan result">
+      <button class="guardy-close" type="button" aria-label="Zamknij">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m7 7 10 10m0-10L7 17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+        </svg>
+      </button>
       <div class="guardy-result-grid">
         <div class="guardy-main-panel">
           <p class="guardy-section-label" hidden>Nasz wynik</p>
@@ -638,10 +730,11 @@ function createPopupRoot(theme = "auto") {
   `;
 
   document.documentElement.append(host);
-  return {
+  const popupApi = {
     host,
     shadow,
     popup: shadow.querySelector(".guardy-popup"),
+    closeButton: shadow.querySelector(".guardy-close"),
     sectionLabel: shadow.querySelector(".guardy-section-label"),
     title: shadow.querySelector(".guardy-title"),
     score: shadow.querySelector(".guardy-score"),
@@ -654,6 +747,8 @@ function createPopupRoot(theme = "auto") {
     actions: shadow.querySelector(".guardy-actions"),
     icon: shadow.querySelector(".guardy-icon")
   };
+  popupApi.closeButton.addEventListener("click", closePopup);
+  return popupApi;
 }
 
 function positionPopup(popup, link) {
@@ -675,6 +770,117 @@ function showCheckingPopup(link, url, theme) {
   positionPopup(activePopup.popup, link);
   requestAnimationFrame(() => activePopup.popup.classList.add("is-visible"));
   return activePopup;
+}
+
+function showAllowToast(url, theme = "auto", message = "Link wygląda bezpiecznie") {
+  closeToast();
+
+  const toast = document.createElement("div");
+  toast.id = "guardy-allow-toast";
+  if (theme !== "auto") {
+    toast.dataset.theme = theme;
+  }
+  toast.innerHTML = `
+    <style>
+      #guardy-allow-toast {
+        all: initial;
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: min(320px, calc(100vw - 36px));
+        padding: 12px 14px;
+        border: 1px solid rgba(52, 199, 89, 0.25);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 180ms ease, transform 180ms ease;
+        backdrop-filter: blur(18px);
+      }
+
+      #guardy-allow-toast.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #guardy-allow-toast svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        color: #34c759;
+      }
+
+      #guardy-allow-toast strong {
+        display: block;
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.25;
+      }
+
+      #guardy-allow-toast span {
+        display: block;
+        overflow: hidden;
+        color: #6e6e73;
+        font-size: 12px;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #guardy-allow-toast {
+          border-color: rgba(48, 209, 88, 0.35);
+          background: rgba(28, 28, 30, 0.94);
+          color: #f5f5f7;
+          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+        }
+
+        #guardy-allow-toast svg {
+          color: #30d158;
+        }
+
+        #guardy-allow-toast span {
+          color: #98989d;
+        }
+      }
+
+      #guardy-allow-toast[data-theme="light"] {
+        border-color: rgba(52, 199, 89, 0.25);
+        background: rgba(255, 255, 255, 0.94);
+        color: #1d1d1f;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+      }
+
+      #guardy-allow-toast[data-theme="dark"] {
+        border-color: rgba(48, 209, 88, 0.35);
+        background: rgba(28, 28, 30, 0.94);
+        color: #f5f5f7;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+      <path d="m8.5 12.5 2.2 2.2 4.8-5.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+    </svg>
+    <div>
+      <strong></strong>
+      <span></span>
+    </div>
+  `;
+  toast.querySelector("strong").textContent = message;
+  toast.querySelector("span").textContent = url.hostname;
+
+  document.documentElement.append(toast);
+  activeToast = toast;
+  requestAnimationFrame(() => toast.classList.add("is-visible"));
+  window.setTimeout(closeToast, 2600);
 }
 
 function clearActions(popup) {
@@ -830,29 +1036,45 @@ function createVirusTotalAction(popup, url, link) {
     onClick: async () => {
       const api = await loadApi();
       const settings = await api.getSettings();
-
-      popup.popup.classList.add("has-vt");
-      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
-
-      if (!settings.vtKey) {
-        showVirusTotalPanel(popup, "missing-key");
-        window.requestAnimationFrame(() => positionPopup(popup.popup, link));
-        return;
-      }
-
-      showVirusTotalPanel(popup, "loading");
-      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
-
-      try {
-        const vtResult = await api.scanVT(url.href, settings.vtKey);
-        showVirusTotalPanel(popup, "result", vtResult);
-      } catch (error) {
-        showVirusTotalPanel(popup, "error");
-      }
-
-      window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+      await runVirusTotalForPopup(api, popup, url, link, settings);
     }
   });
+}
+
+async function runVirusTotalForPopup(api, popup, url, link, settings) {
+  popup.popup.classList.add("has-vt");
+  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+
+  if (!settings.vtKey) {
+    showVirusTotalPanel(popup, "missing-key");
+    window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+    return;
+  }
+
+  showVirusTotalPanel(popup, "loading");
+  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+
+  try {
+    const vtResult = await api.scanVT(url.href, settings.vtKey);
+    showVirusTotalPanel(popup, "result", vtResult);
+  } catch (error) {
+    showVirusTotalPanel(popup, "error");
+  }
+
+  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+}
+
+async function runVirusTotalForToast(api, url, settings) {
+  if (!settings.alwaysScanVirusTotal || !settings.vtKey) {
+    return;
+  }
+
+  try {
+    const vtResult = await api.scanVT(url.href, settings.vtKey);
+    showAllowToast(url, settings.theme, `Guardy: ALLOW, VT: ${vtResult.vt_decision || "OK"}`);
+  } catch (error) {
+    showAllowToast(url, settings.theme, "Link wygląda bezpiecznie");
+  }
 }
 
 function renderAllowActions(popup, link, url) {
@@ -973,6 +1195,10 @@ async function handleLinkClick(event) {
     return;
   }
 
+  if (wasRecentlyAllowed(url)) {
+    return;
+  }
+
   event.preventDefault();
   event.stopPropagation();
 
@@ -984,8 +1210,6 @@ async function handleLinkClick(event) {
     return;
   }
 
-  const popup = showCheckingPopup(link, url, settings.theme);
-
   try {
     const result = await api.scanUrl(url.href);
     await api.saveToHistory({
@@ -993,12 +1217,32 @@ async function handleLinkClick(event) {
       url: url.href,
       source: "clicked_link"
     });
+
+    if (result.decision === "ALLOW") {
+      rememberAllowedUrl(url);
+      showAllowToast(url, settings.theme);
+      runVirusTotalForToast(api, url, settings);
+      return;
+    }
+
+    const popup = showCheckingPopup(link, url, settings.theme);
     setPopupDone(popup, result, link, url);
+    if (settings.alwaysScanVirusTotal) {
+      runVirusTotalForPopup(api, popup, url, link, settings);
+    }
   } catch (error) {
-    setPopupError(popup, error);
+    followLink(link, url);
   }
 }
 
 document.addEventListener("click", (event) => {
   handleLinkClick(event);
+}, true);
+
+document.addEventListener("pointerdown", (event) => {
+  if (!activePopup || activePopup.host.contains(event.target)) {
+    return;
+  }
+
+  closePopup();
 }, true);
