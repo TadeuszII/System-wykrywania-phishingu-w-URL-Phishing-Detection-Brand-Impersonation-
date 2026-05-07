@@ -120,11 +120,12 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
         keywords = [keyword.lower() for keyword in brand.keywords]
 
         for official_root, official_label in zip(official_roots, official_labels, strict=False):
-            distance = levenshtein_distance(root_label, official_label)
-            if distance == 1:
-                penalty = add_signal(penalty, reasons, 30, f"Brand lookalike detected: {brand.brand_name}")
-            elif distance == 2:
-                penalty = add_signal(penalty, reasons, 20, f"Possible brand lookalike detected: {brand.brand_name}")
+            if len(root_label) >= 4 and len(official_label) >= 4:
+                distance = levenshtein_distance(root_label, official_label)
+                if distance == 1:
+                    penalty = add_signal(penalty, reasons, 30, f"Brand lookalike detected: {brand.brand_name}")
+                elif distance == 2:
+                    penalty = add_signal(penalty, reasons, 20, f"Possible brand lookalike detected: {brand.brand_name}")
 
             if official_root in hostname and root_domain != official_root:
                 penalty = add_signal(penalty, reasons, 30, f"Misleading brand subdomain detected: {brand.brand_name}")
