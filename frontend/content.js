@@ -169,7 +169,16 @@ function createPopupRoot(theme = "auto") {
       :host {
         all: initial;
         color-scheme: light dark;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --guardy-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display", sans-serif;
+        font-family: var(--guardy-font);
+      }
+
+      :host *,
+      :host *::before,
+      :host *::after {
+        box-sizing: border-box;
+        font-family: var(--guardy-font);
+        letter-spacing: 0;
       }
 
       :host([data-theme="dark"]) {
@@ -202,13 +211,37 @@ function createPopupRoot(theme = "auto") {
         width: 560px;
       }
 
+      .guardy-popup-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding-right: 0;
+      }
+
+      .guardy-brand-mark {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        color: #1d1d1f;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .guardy-brand-mark svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        color: #0071e3;
+      }
+
       .guardy-close {
-        position: absolute;
-        top: 10px;
-        right: 10px;
         display: grid;
         width: 28px;
         height: 28px;
+        flex: 0 0 auto;
         place-items: center;
         border: 0;
         border-radius: 8px;
@@ -270,8 +303,11 @@ function createPopupRoot(theme = "auto") {
       }
 
       .guardy-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 14px;
       }
 
       .guardy-row {
@@ -281,9 +317,13 @@ function createPopupRoot(theme = "auto") {
 
       .guardy-title {
         margin: 0;
+        min-width: 0;
+        overflow: hidden;
         font-size: 17px;
         font-weight: 650;
         line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .guardy-score {
@@ -513,6 +553,7 @@ function createPopupRoot(theme = "auto") {
         }
 
         .guardy-score,
+        .guardy-brand-mark,
         .guardy-action {
           color: #f5f5f7;
         }
@@ -596,6 +637,7 @@ function createPopupRoot(theme = "auto") {
       }
 
       :host([data-theme="dark"]) .guardy-score,
+      :host([data-theme="dark"]) .guardy-brand-mark,
       :host([data-theme="dark"]) .guardy-action {
         color: #f5f5f7;
       }
@@ -664,6 +706,7 @@ function createPopupRoot(theme = "auto") {
       }
 
       :host([data-theme="light"]) .guardy-score,
+      :host([data-theme="light"]) .guardy-brand-mark,
       :host([data-theme="light"]) .guardy-action,
       :host([data-theme="light"]) .guardy-vt-count,
       :host([data-theme="light"]) .guardy-vt-link {
@@ -693,11 +736,19 @@ function createPopupRoot(theme = "auto") {
       }
     </style>
     <section class="guardy-popup" role="dialog" aria-live="polite" aria-label="Guardy scan result">
-      <button class="guardy-close" type="button" aria-label="Zamknij">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m7 7 10 10m0-10L7 17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
-        </svg>
-      </button>
+      <div class="guardy-popup-top">
+        <div class="guardy-brand-mark">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.2 19 6v5.6c0 4.4-2.9 7.5-7 9.2-4.1-1.7-7-4.8-7-9.2V6l7-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
+          </svg>
+          <span>Guardy</span>
+        </div>
+        <button class="guardy-close" type="button" aria-label="Zamknij">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m7 7 10 10m0-10L7 17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+          </svg>
+        </button>
+      </div>
       <div class="guardy-result-grid">
         <div class="guardy-main-panel">
           <p class="guardy-section-label" hidden>Nasz wynik</p>
@@ -784,6 +835,7 @@ function showAllowToast(url, theme = "auto", message = "Link wygląda bezpieczni
     <style>
       #guardy-allow-toast {
         all: initial;
+        --guardy-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display", sans-serif;
         position: fixed;
         right: 18px;
         bottom: 18px;
@@ -798,11 +850,18 @@ function showAllowToast(url, theme = "auto", message = "Link wygląda bezpieczni
         background: rgba(255, 255, 255, 0.94);
         box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
         color: #1d1d1f;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: var(--guardy-font);
         opacity: 0;
         transform: translateY(8px);
         transition: opacity 180ms ease, transform 180ms ease;
         backdrop-filter: blur(18px);
+      }
+
+      #guardy-allow-toast,
+      #guardy-allow-toast * {
+        box-sizing: border-box;
+        font-family: var(--guardy-font);
+        letter-spacing: 0;
       }
 
       #guardy-allow-toast.is-visible {
