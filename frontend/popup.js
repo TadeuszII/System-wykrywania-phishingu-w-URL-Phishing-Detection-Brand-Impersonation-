@@ -1,4 +1,4 @@
-import { getHealth, getSettings, saveSettings, saveToHistory, scanUrl } from "./utils/api.js";
+import { getHealth, getSettings, saveSettings, saveToHistory, scanUrl, scanVT } from "./utils/api.js";
 
 const elements = {
   backendUrl: document.querySelector("#backendUrl"),
@@ -20,6 +20,13 @@ const elements = {
   manualScanMessage: document.querySelector("#manualScanMessage"),
   manualScore: document.querySelector("#manualScore"),
   manualUrl: document.querySelector("#manualUrl"),
+  manualVtButton: document.querySelector("#manualVtButton"),
+  manualVtCategories: document.querySelector("#manualVtCategories"),
+  manualVtDecision: document.querySelector("#manualVtDecision"),
+  manualVtLink: document.querySelector("#manualVtLink"),
+  manualVtMessage: document.querySelector("#manualVtMessage"),
+  manualVtResult: document.querySelector("#manualVtResult"),
+  manualVtStats: document.querySelector("#manualVtStats"),
   openSettings: document.querySelector("#openSettings"),
   settingsLink: document.querySelector("#settingsLink"),
   toggleHint: document.querySelector("#toggleHint")
@@ -27,6 +34,7 @@ const elements = {
 
 let settings;
 let currentDomain = "";
+let lastManualUrl = "";
 
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme === "auto" ? "" : theme;
@@ -77,6 +85,15 @@ function formatTime(value) {
 function getHostname(value) {
   try {
     return new URL(value).hostname;
+  } catch (error) {
+    return "";
+  }
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
   } catch (error) {
     return "";
   }
@@ -196,6 +213,7 @@ function normalizeManualUrl(value) {
 
 function renderManualResult(result, url) {
   const decision = result.decision || "WARN";
+  lastManualUrl = url;
   elements.manualResult.hidden = false;
   elements.manualResult.classList.remove("decision-allow", "decision-warn", "decision-block");
   elements.manualResult.classList.add(`decision-${decision.toLowerCase()}`);
@@ -203,6 +221,90 @@ function renderManualResult(result, url) {
   elements.manualScore.textContent = `${Number(result.risk_score) || 0}/100`;
   elements.manualDecisionIcon.innerHTML = getDecisionIcon(decision);
   elements.manualResultMeta.textContent = getHostname(url) || url;
+  resetManualVt();
+}
+
+function resetManualVt() {
+  elements.manualVtResult.hidden = true;
+  elements.manualVtResult.classList.remove("decision-allow", "decision-warn", "decision-block");
+  elements.manualVtDecision.textContent = "VirusTotal";
+  elements.manualVtStats.textContent = "";
+  elements.manualVtCategories.textContent = "";
+  elements.manualVtLink.hidden = true;
+  elements.manualVtLink.removeAttribute("href");
+  elements.manualVtMessage.textContent = "";
+  elements.manualVtButton.disabled = false;
+  elements.manualVtButton.textContent = "Porównaj z VirusTotal";
+}
+
+function getVirusTotalLabel(decision) {
+  if (decision === "ALLOW") {
+    return "VT nie wykrywa zagrożenia";
+  }
+
+  if (decision === "BLOCK") {
+    return "VT wykrywa ryzyko";
+  }
+
+  if (decision === "WARN") {
+    return "VT wymaga uwagi";
+  }
+
+  return "Wynik VirusTotal";
+}
+
+function renderManualVtResult(result) {
+  const decision = result.vt_decision || "WARN";
+  const flagged = Number(result.engines_flagged) || 0;
+  const total = Number(result.engines_total) || 0;
+  const categories = Array.isArray(result.vt_categories) && result.vt_categories.length > 0
+    ? result.vt_categories.join(", ")
+    : "brak kategorii";
+
+  elements.manualVtResult.hidden = false;
+  elements.manualVtResult.classList.remove("decision-allow", "decision-warn", "decision-block");
+  elements.manualVtResult.classList.add(`decision-${decision.toLowerCase()}`);
+  elements.manualVtDecision.textContent = getVirusTotalLabel(decision);
+  elements.manualVtStats.textContent = `${flagged}/${total} silników zgłosiło zagrożenie`;
+  elements.manualVtCategories.textContent = `Kategorie: ${categories}`;
+
+  const permalink = safeExternalUrl(result.vt_permalink);
+  if (permalink) {
+    elements.manualVtLink.href = permalink;
+    elements.manualVtLink.hidden = false;
+  } else {
+    elements.manualVtLink.hidden = true;
+    elements.manualVtLink.removeAttribute("href");
+  }
+}
+
+async function handleManualVtCompare() {
+  if (!lastManualUrl) {
+    elements.manualVtMessage.textContent = "Najpierw wykonaj skan URL.";
+    return;
+  }
+
+  if (!settings.vtKey) {
+    elements.manualVtResult.hidden = true;
+    elements.manualVtMessage.textContent = "Dodaj klucz VirusTotal w ustawieniach.";
+    return;
+  }
+
+  elements.manualVtButton.disabled = true;
+  elements.manualVtButton.textContent = "Sprawdzam VT";
+  elements.manualVtMessage.textContent = "Porównuję wynik.";
+
+  try {
+    const vtResult = await scanVT(lastManualUrl, settings.vtKey);
+    renderManualVtResult(vtResult);
+    elements.manualVtMessage.textContent = "Porównanie gotowe.";
+  } catch (error) {
+    elements.manualVtResult.hidden = true;
+    elements.manualVtMessage.textContent = error.message || "Nie udało się pobrać wyniku VT.";
+  } finally {
+    elements.manualVtButton.disabled = false;
+    elements.manualVtButton.textContent = "Porównaj z VirusTotal";
+  }
 }
 
 async function handleManualScan(event) {
@@ -214,6 +316,7 @@ async function handleManualScan(event) {
   } catch (error) {
     elements.manualScanMessage.textContent = error.message;
     elements.manualResult.hidden = true;
+    lastManualUrl = "";
     return;
   }
 
@@ -230,9 +333,13 @@ async function handleManualScan(event) {
     });
     renderManualResult(result, url);
     await renderLastScan();
+    if (settings.alwaysScanVirusTotal) {
+      await handleManualVtCompare();
+    }
     elements.manualScanMessage.textContent = "Skan zakończony.";
   } catch (error) {
     elements.manualResult.hidden = true;
+    lastManualUrl = "";
     elements.manualScanMessage.textContent = error.message || "Backend offline albo brak odpowiedzi.";
   } finally {
     elements.manualScanButton.disabled = false;
@@ -258,6 +365,7 @@ async function initPopup() {
 
 elements.domainToggle.addEventListener("click", toggleCurrentDomain);
 elements.manualScanForm.addEventListener("submit", handleManualScan);
+elements.manualVtButton.addEventListener("click", handleManualVtCompare);
 elements.openSettings.addEventListener("click", openSettings);
 elements.settingsLink.addEventListener("click", openSettings);
 

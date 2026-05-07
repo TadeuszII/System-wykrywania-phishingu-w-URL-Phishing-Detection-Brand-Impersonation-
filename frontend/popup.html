@@ -60,6 +60,23 @@
           </div>
           <strong id="manualScore">--/100</strong>
         </div>
+        <div class="manual-vt">
+          <div class="manual-vt-actions">
+            <button class="manual-vt-button" id="manualVtButton" type="button">Porównaj z VirusTotal</button>
+            <span class="manual-vt-message" id="manualVtMessage"></span>
+          </div>
+          <div class="manual-vt-panel" id="manualVtResult" hidden>
+            <div class="manual-vt-row">
+              <span class="manual-vt-logo">VT</span>
+              <div>
+                <strong id="manualVtDecision">VirusTotal</strong>
+                <p class="muted" id="manualVtStats"></p>
+              </div>
+            </div>
+            <p class="manual-vt-categories" id="manualVtCategories"></p>
+            <a class="manual-vt-link" id="manualVtLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Otwórz raport</a>
+          </div>
+        </div>
       </section>
 
       <section class="panel">

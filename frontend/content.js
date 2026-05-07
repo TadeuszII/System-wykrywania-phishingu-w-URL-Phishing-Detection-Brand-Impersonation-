@@ -205,6 +205,8 @@ function createPopupRoot(theme = "auto") {
         transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
         backdrop-filter: blur(18px);
         box-sizing: border-box;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
       }
 
       .guardy-popup.has-vt {
@@ -805,21 +807,46 @@ function createPopupRoot(theme = "auto") {
 function positionPopup(popup, link) {
   const rect = link.getBoundingClientRect();
   const spacing = 12;
-  const popupWidth = Math.min(popup.offsetWidth || 280, window.innerWidth - (spacing * 2));
-  const popupHeight = Math.min(popup.offsetHeight || 140, window.innerHeight - (spacing * 2));
-  const left = Math.min(Math.max(rect.left, spacing), window.innerWidth - popupWidth - spacing);
-  const top = Math.min(rect.bottom + spacing, window.innerHeight - popupHeight - spacing);
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const maxWidth = Math.max(240, viewportWidth - (spacing * 2));
+  const maxHeight = Math.max(180, viewportHeight - (spacing * 2));
 
-  popup.style.left = `${left}px`;
-  popup.style.top = `${Math.max(spacing, top)}px`;
+  popup.style.maxWidth = `${maxWidth}px`;
+  popup.style.maxHeight = `${maxHeight}px`;
+  popup.style.overflowY = "auto";
+
+  const measuredWidth = Math.min(popup.offsetWidth || 280, maxWidth);
+  const measuredHeight = Math.min(popup.offsetHeight || 140, maxHeight);
+  const preferredLeft = rect.left + (rect.width / 2) - (measuredWidth / 2);
+  const left = Math.min(
+    Math.max(preferredLeft, spacing),
+    viewportWidth - measuredWidth - spacing
+  );
+  const belowTop = rect.bottom + spacing;
+  const aboveTop = rect.top - measuredHeight - spacing;
+  const hasRoomBelow = belowTop + measuredHeight <= viewportHeight - spacing;
+  const hasRoomAbove = aboveTop >= spacing;
+  let top;
+
+  if (hasRoomBelow || !hasRoomAbove) {
+    top = Math.min(belowTop, viewportHeight - measuredHeight - spacing);
+  } else {
+    top = aboveTop;
+  }
+
+  popup.style.left = `${Math.round(left)}px`;
+  popup.style.top = `${Math.round(Math.max(spacing, top))}px`;
 }
 
 function showCheckingPopup(link, url, theme) {
   activePopup?.host.remove();
   activePopup = createPopupRoot(theme);
   activePopup.domain.textContent = url.hostname;
-  positionPopup(activePopup.popup, link);
-  requestAnimationFrame(() => activePopup.popup.classList.add("is-visible"));
+  requestAnimationFrame(() => {
+    positionPopup(activePopup.popup, link);
+    activePopup.popup.classList.add("is-visible");
+  });
   return activePopup;
 }
 
@@ -1090,6 +1117,13 @@ function showVirusTotalPanel(popup, state, vtResult = null) {
   `;
 }
 
+function schedulePopupPosition(popup, link) {
+  requestAnimationFrame(() => {
+    positionPopup(popup.popup, link);
+    requestAnimationFrame(() => positionPopup(popup.popup, link));
+  });
+}
+
 function createVirusTotalAction(popup, url, link) {
   return createAction("Porównaj z VirusTotal", ICONS.externalLink, {
     onClick: async () => {
@@ -1102,16 +1136,16 @@ function createVirusTotalAction(popup, url, link) {
 
 async function runVirusTotalForPopup(api, popup, url, link, settings) {
   popup.popup.classList.add("has-vt");
-  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+  schedulePopupPosition(popup, link);
 
   if (!settings.vtKey) {
     showVirusTotalPanel(popup, "missing-key");
-    window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+    schedulePopupPosition(popup, link);
     return;
   }
 
   showVirusTotalPanel(popup, "loading");
-  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+  schedulePopupPosition(popup, link);
 
   try {
     const vtResult = await api.scanVT(url.href, settings.vtKey);
@@ -1120,7 +1154,7 @@ async function runVirusTotalForPopup(api, popup, url, link, settings) {
     showVirusTotalPanel(popup, "error");
   }
 
-  window.requestAnimationFrame(() => positionPopup(popup.popup, link));
+  schedulePopupPosition(popup, link);
 }
 
 async function runVirusTotalForToast(api, url, settings) {

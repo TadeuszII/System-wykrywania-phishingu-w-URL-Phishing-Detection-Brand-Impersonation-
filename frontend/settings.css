@@ -188,7 +188,7 @@ a {
 }
 
 .content {
-  padding: 34px 38px;
+  padding: 34px 38px 96px;
 }
 
 .page-header,
@@ -462,10 +462,18 @@ input:focus {
 }
 
 .actions-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
   gap: 14px;
   margin-top: 18px;
-  padding: 18px 0 0;
+  margin-right: -38px;
+  margin-left: -38px;
+  padding: 14px 38px;
   border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.06);
 }
 
 .save-cluster {
@@ -666,7 +674,7 @@ input:focus {
   }
 
   .content {
-    padding: 24px 18px;
+    padding: 24px 18px 118px;
   }
 
   .grid {
@@ -676,6 +684,9 @@ input:focus {
   .actions-bar {
     align-items: stretch;
     flex-direction: column;
+    margin-right: -18px;
+    margin-left: -18px;
+    padding: 14px 18px;
   }
 
   .save-cluster {
