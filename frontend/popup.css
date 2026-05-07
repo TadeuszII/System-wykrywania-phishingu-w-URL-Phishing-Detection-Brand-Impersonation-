@@ -1,5 +1,6 @@
 :root {
   color-scheme: light dark;
+  --guardy-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display", sans-serif;
   --bg: #ffffff;
   --panel: #f5f5f7;
   --text: #1d1d1f;
@@ -40,6 +41,8 @@ html[data-theme="light"] {
 
 * {
   box-sizing: border-box;
+  font-family: var(--guardy-font);
+  letter-spacing: 0;
 }
 
 body {
@@ -47,11 +50,15 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--guardy-font);
   transition: background 250ms ease, color 250ms ease;
 }
 
 button {
+  font: inherit;
+}
+
+input {
   font: inherit;
 }
 
@@ -139,6 +146,169 @@ button {
 
 .panel {
   padding: 12px;
+}
+
+.manual-scan form {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-scan-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.manual-scan input {
+  min-width: 0;
+  height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.manual-scan input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14);
+}
+
+.manual-scan button {
+  min-width: 74px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  transition: opacity 150ms ease, transform 100ms ease;
+}
+
+.manual-scan button:hover {
+  opacity: 0.86;
+}
+
+.manual-scan button:active {
+  transform: scale(0.98);
+}
+
+.manual-scan button:disabled {
+  cursor: default;
+  opacity: 0.62;
+  transform: none;
+}
+
+.manual-result[hidden] {
+  display: none;
+}
+
+.manual-vt {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.manual-vt-actions,
+.manual-vt-row {
+  display: flex;
+  align-items: center;
+}
+
+.manual-vt-actions {
+  gap: 8px;
+}
+
+.manual-vt-button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  transition: border-color 150ms ease, opacity 150ms ease, transform 100ms ease;
+}
+
+.manual-vt-button:hover {
+  border-color: var(--accent);
+}
+
+.manual-vt-button:active {
+  transform: scale(0.98);
+}
+
+.manual-vt-button:disabled {
+  cursor: default;
+  opacity: 0.62;
+  transform: none;
+}
+
+.manual-vt-message {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.manual-vt-panel {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
+.manual-vt-panel[hidden] {
+  display: none;
+}
+
+.manual-vt-row {
+  gap: 8px;
+}
+
+.manual-vt-logo {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.manual-vt-row strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+
+.manual-vt-categories {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.manual-vt-link {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.manual-vt-link:hover {
+  text-decoration: underline;
 }
 
 .label {
@@ -231,8 +401,35 @@ button {
 }
 
 .decision-block #lastDecisionIcon,
-.decision-block #lastScore {
+.decision-block #lastScore,
+.decision-block #manualDecisionIcon,
+.decision-block #manualScore {
   color: var(--block);
+}
+
+.decision-allow #manualDecisionIcon,
+.decision-allow #manualScore {
+  color: var(--allow);
+}
+
+.decision-warn #manualDecisionIcon,
+.decision-warn #manualScore {
+  color: var(--warn);
+}
+
+.manual-vt-panel.decision-allow .manual-vt-logo {
+  background: var(--allow);
+  color: #ffffff;
+}
+
+.manual-vt-panel.decision-warn .manual-vt-logo {
+  background: var(--warn);
+  color: #ffffff;
+}
+
+.manual-vt-panel.decision-block .manual-vt-logo {
+  background: var(--block);
+  color: #ffffff;
 }
 
 .switch {

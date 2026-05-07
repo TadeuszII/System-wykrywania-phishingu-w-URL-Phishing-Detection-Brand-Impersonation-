@@ -5,6 +5,7 @@ const VT_KEY_PATTERN = /^[a-fA-F0-9]{64}$/;
 const elements = {
   aboutButton: document.querySelector("#aboutButton"),
   aboutModal: document.querySelector("#aboutModal"),
+  alwaysScanVirusTotal: document.querySelector("#alwaysScanVirusTotal"),
   backendUrl: document.querySelector("#backendUrl"),
   clearData: document.querySelector("#clearData"),
   clearHistory: document.querySelector("#clearHistory"),
@@ -65,6 +66,12 @@ function validateVtKey() {
   elements.vtKeyHint.classList.remove("is-valid", "is-invalid");
 
   if (!value) {
+    if (elements.alwaysScanVirusTotal.checked) {
+      elements.vtKeyHint.textContent = "Automatyczne VirusTotal wymaga klucza API. Ustawienie zapisze się, ale skan VT nie wystartuje bez klucza.";
+      elements.vtKeyHint.classList.add("is-invalid");
+      return true;
+    }
+
     elements.vtKeyHint.textContent = "Klucz jest opcjonalny, ale potrzebny do porównania z VirusTotal.";
     return true;
   }
@@ -83,6 +90,7 @@ function validateVtKey() {
 function renderForm() {
   elements.backendUrl.value = settings.backendUrl;
   elements.vtKey.value = settings.vtKey;
+  elements.alwaysScanVirusTotal.checked = Boolean(settings.alwaysScanVirusTotal);
   elements.form.scanMode.value = settings.scanMode;
   elements.form.theme.value = settings.theme;
   setTheme(settings.theme);
@@ -120,10 +128,13 @@ function renderHistory() {
   });
 }
 
-function showStatus(message) {
+function showStatus(message, type = "success") {
   elements.saveStatus.textContent = message;
+  elements.saveStatus.classList.toggle("is-error", type === "error");
+  elements.saveStatus.classList.add("is-visible");
   window.clearTimeout(showStatus.timeoutId);
   showStatus.timeoutId = window.setTimeout(() => {
+    elements.saveStatus.classList.remove("is-visible");
     elements.saveStatus.textContent = "";
   }, 2400);
 }
@@ -132,20 +143,21 @@ async function handleSubmit(event) {
   event.preventDefault();
 
   if (!validateVtKey()) {
-    showStatus("Popraw klucz VirusTotal.");
+    showStatus("Popraw klucz VirusTotal.", "error");
     return;
   }
 
   try {
     new URL(elements.backendUrl.value.trim());
   } catch (error) {
-    showStatus("Podaj poprawny backend URL.");
+    showStatus("Podaj poprawny backend URL.", "error");
     return;
   }
 
   settings = await saveSettings({
     backendUrl: elements.backendUrl.value.trim().replace(/\/+$/, ""),
     vtKey: elements.vtKey.value.trim(),
+    alwaysScanVirusTotal: elements.alwaysScanVirusTotal.checked,
     scanMode: elements.form.scanMode.value,
     theme: elements.form.theme.value
   });
@@ -203,6 +215,7 @@ async function initSettings() {
 }
 
 elements.form.addEventListener("submit", handleSubmit);
+elements.alwaysScanVirusTotal.addEventListener("change", validateVtKey);
 elements.vtKey.addEventListener("input", validateVtKey);
 elements.toggleVtKey.addEventListener("click", () => {
   elements.vtKey.type = elements.vtKey.type === "password" ? "text" : "password";
@@ -222,5 +235,5 @@ elements.form.theme.forEach((input) => {
 });
 
 initSettings().catch(() => {
-  showStatus("Nie udało się wczytać ustawień.");
+  showStatus("Nie udało się wczytać ustawień.", "error");
 });

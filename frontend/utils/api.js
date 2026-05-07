@@ -1,6 +1,7 @@
 export const DEFAULT_SETTINGS = {
   backendUrl: "http://localhost:8000",
   vtKey: "",
+  alwaysScanVirusTotal: false,
   scanMode: "all",
   theme: "auto",
   disabledDomains: []
