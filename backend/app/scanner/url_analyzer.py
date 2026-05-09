@@ -54,6 +54,17 @@ URL_SHORTENERS = {
     "t.ly",
 }
 
+FREE_HOSTING_DOMAINS = {
+    "pages.dev",
+    "vercel.app",
+    "web.app",
+    "firebaseapp.com",
+    "wixstudio.com",
+    "netlify.app",
+    "workers.dev",
+    "github.io",
+}
+
 
 @dataclass(frozen=True)
 class RuleAnalysis:
@@ -102,6 +113,32 @@ def count_subdomains(hostname: str) -> int:
 def add_rule(score: int, reasons: list[str], points: int, reason: str) -> int:
     reasons.append(reason)
     return min(100, score + points)
+
+
+def is_free_hosting_domain(hostname: str) -> bool:
+    return any(hostname == domain or hostname.endswith(f".{domain}") for domain in FREE_HOSTING_DOMAINS)
+
+
+def matched_free_hosting_domain(hostname: str) -> str | None:
+    for domain in FREE_HOSTING_DOMAINS:
+        if hostname == domain or hostname.endswith(f".{domain}"):
+            return domain
+    return None
+
+
+def free_hosting_subdomain(hostname: str, hosting_domain: str) -> str:
+    if hostname == hosting_domain:
+        return ""
+    return hostname[: -(len(hosting_domain) + 1)]
+
+
+def has_long_numeric_path_token(path: str) -> bool:
+    return any(re.fullmatch(r"\d{10,}", segment) for segment in path.split("/") if segment)
+
+
+def has_support_themed_path(path: str) -> bool:
+    segments = {segment.lower() for segment in path.split("/") if segment}
+    return bool(segments.intersection({"help", "contact", "support"}))
 
 
 def analyze_url(url: str) -> RuleAnalysis:
@@ -153,6 +190,18 @@ def analyze_url(url: str) -> RuleAnalysis:
 
     if hostname in URL_SHORTENERS:
         score = add_rule(score, reasons, 20, "URL shortener detected")
+
+    free_hosting_domain = matched_free_hosting_domain(hostname)
+    if free_hosting_domain:
+        score = add_rule(score, reasons, 10, "Commonly abused free hosting platform detected")
+        subdomain = free_hosting_subdomain(hostname, free_hosting_domain)
+        if subdomain and ("-" in subdomain or shannon_entropy(subdomain) > 3.5):
+            score = add_rule(score, reasons, 15, "Suspicious free-hosting subdomain detected")
+        if has_support_themed_path(parsed.path):
+            score = add_rule(score, reasons, 10, "Support-themed path on free hosting platform")
+
+    if has_long_numeric_path_token(parsed.path):
+        score = add_rule(score, reasons, 10, "Long numeric path token detected")
 
     if "xn--" in hostname:
         score = add_rule(score, reasons, 25, "Punycode or IDN domain detected")

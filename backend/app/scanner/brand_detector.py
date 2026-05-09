@@ -98,6 +98,10 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
     if not hostname:
         return BrandDetection(brand_penalty=0, matched_brand=None, reasons=[])
 
+    coerced_brands = [coerce_brand(raw_brand) for raw_brand in brands]
+    if any(is_official_domain(hostname, brand.official_domains) for brand in coerced_brands):
+        return BrandDetection(brand_penalty=0, matched_brand=None, reasons=[])
+
     root_domain = registrable_domain(hostname)
     root_label = domain_label(root_domain)
     host_labels = hostname.split(".")
@@ -107,11 +111,7 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
     best_brand: str | None = None
     best_reasons: list[str] = []
 
-    for raw_brand in brands:
-        brand = coerce_brand(raw_brand)
-        if is_official_domain(hostname, brand.official_domains):
-            continue
-
+    for brand in coerced_brands:
         penalty = 0
         reasons: list[str] = []
         official_domains = [domain.lower().strip(".") for domain in brand.official_domains]

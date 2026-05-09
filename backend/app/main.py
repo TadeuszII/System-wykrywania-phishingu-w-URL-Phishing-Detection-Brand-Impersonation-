@@ -26,13 +26,21 @@ from app.models import (
     VTRequest,
     VTResult,
 )
-from app.scanner.brand_detector import detect_brand_impersonation
+from app.scanner.brand_detector import detect_brand_impersonation, hostname_from_url, is_official_domain
 from app.scanner.decision_engine import build_decision, decide_from_score
 from app.scanner.ml_model import get_ml_status, predict_ml_score
 from app.scanner.url_analyzer import analyze_url
 
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "admin_api_key")
 VT_TIMEOUT_SECONDS = 8
+OFFICIAL_AUTH_KEYWORD_CAP = 25
+OFFICIAL_AUTH_KEYWORD_REASONS = {
+    "Suspicious keyword detected: account",
+    "Suspicious keyword detected: login",
+    "Suspicious keyword detected: password",
+    "Suspicious keyword detected: security",
+    "Suspicious keyword detected: signin",
+}
 
 
 @asynccontextmanager
@@ -105,15 +113,43 @@ def scan_url(payload: ScanRequest, db: Session = Depends(get_db)) -> ScanResult:
         ml_score=ml_score,
         matched_brand=brand_detection.matched_brand,
     )
+    risk_score = decision.risk_score
+    decision_value = decision.decision
+    if should_apply_official_auth_cap(payload.url, brands, rule_analysis.reasons, brand_detection.brand_penalty):
+        risk_score = min(risk_score, OFFICIAL_AUTH_KEYWORD_CAP)
+        decision_value = decide_from_score(risk_score)
+
     result = ScanResult(
-        risk_score=decision.risk_score,
-        decision=decision.decision,
+        risk_score=risk_score,
+        decision=decision_value,
         reasons=decision.reasons,
         matched_brand=decision.matched_brand,
         timestamp=utc_now(),
     )
     save_scan_result(db, payload, result)
     return result
+
+
+def is_official_brand_domain(url: str, brands: list[BrandProfileORM]) -> bool:
+    hostname = hostname_from_url(url)
+    return any(is_official_domain(hostname, brand.official_domains) for brand in brands)
+
+
+def has_only_official_auth_keyword_reasons(reasons: list[str]) -> bool:
+    return bool(reasons) and all(reason in OFFICIAL_AUTH_KEYWORD_REASONS for reason in reasons)
+
+
+def should_apply_official_auth_cap(
+    url: str,
+    brands: list[BrandProfileORM],
+    rule_reasons: list[str],
+    brand_penalty: int,
+) -> bool:
+    return (
+        brand_penalty == 0
+        and is_official_brand_domain(url, brands)
+        and has_only_official_auth_keyword_reasons(rule_reasons)
+    )
 
 
 def save_scan_result(db: Session, payload: ScanRequest, result: ScanResult) -> None:
