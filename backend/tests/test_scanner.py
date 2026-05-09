@@ -107,6 +107,20 @@ def test_rules_detect_long_numeric_path_token_globally():
     assert "Long numeric path token detected" in result.reasons
 
 
+def test_rules_ignore_entropy_for_normal_known_domains():
+    stackoverflow_result = analyze_url("https://stackoverflow.com/users/login")
+    cloudflare_result = analyze_url("https://dash.cloudflare.com/login")
+
+    assert "High domain entropy" not in stackoverflow_result.reasons
+    assert "High domain entropy" not in cloudflare_result.reasons
+
+
+def test_rules_detect_non_standard_port():
+    result = analyze_url("http://paypal.com:8080/login")
+    assert result.rule_score >= 45
+    assert "Suspicious non-standard port detected" in result.reasons
+
+
 def test_brand_detection_ignores_official_domain():
     result = detect_brand_impersonation("https://www.paypal.com/signin", BRANDS)
     assert result.brand_penalty == 0
@@ -265,6 +279,36 @@ def test_scan_url_does_not_cap_impersonation_or_misleading_domains():
     assert impersonation_response.json()["decision"] == "BLOCK"
     assert misleading_response.status_code == 200
     assert misleading_response.json()["decision"] != "ALLOW"
+
+
+def test_scan_url_does_not_cap_non_standard_port_on_official_domain():
+    with TestClient(app) as client:
+        response = client.post(
+            "/scan/url",
+            json={"url": "http://paypal.com:8080/login"},
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["decision"] != "ALLOW"
+    assert "Suspicious non-standard port detected" in payload["reasons"]
+
+
+def test_scan_url_keeps_free_hosting_and_typo_phishing_risky():
+    with TestClient(app) as client:
+        hosting_response = client.post(
+            "/scan/url",
+            json={"url": "https://goes326-goutian-bc.pages.dev/help/contact/206000278552756"},
+        )
+        typo_response = client.post(
+            "/scan/url",
+            json={"url": "http://g00gle.com/account/verify"},
+        )
+
+    assert hosting_response.status_code == 200
+    assert hosting_response.json()["decision"] == "BLOCK"
+    assert typo_response.status_code == 200
+    assert typo_response.json()["decision"] != "ALLOW"
 
 
 def test_admin_brands_requires_api_key():
