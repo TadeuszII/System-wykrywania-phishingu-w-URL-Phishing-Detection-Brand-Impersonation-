@@ -92,6 +92,7 @@ function renderForm() {
   elements.vtKey.value = settings.vtKey;
   elements.alwaysScanVirusTotal.checked = Boolean(settings.alwaysScanVirusTotal);
   elements.form.scanMode.value = settings.scanMode;
+  elements.form.safeLinkMode.value = settings.safeLinkMode;
   elements.form.theme.value = settings.theme;
   setTheme(settings.theme);
   validateVtKey();
@@ -159,6 +160,7 @@ async function handleSubmit(event) {
     vtKey: elements.vtKey.value.trim(),
     alwaysScanVirusTotal: elements.alwaysScanVirusTotal.checked,
     scanMode: elements.form.scanMode.value,
+    safeLinkMode: elements.form.safeLinkMode.value,
     theme: elements.form.theme.value
   });
 

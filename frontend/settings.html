@@ -122,6 +122,33 @@
                     <small>Pomija linki w tej samej domenie.</small>
                   </span>
                 </label>
+                <label>
+                  <input type="radio" name="scanMode" value="manual">
+                  <span>
+                    <strong>Tylko ręczne skanowanie</strong>
+                    <small>Nie przechwytuje kliknięć. Skanowanie działa tylko z popupu rozszerzenia.</small>
+                  </span>
+                </label>
+              </div>
+            </section>
+
+            <section class="card" id="safe-links">
+              <h3>Tryb powiadomień dla bezpiecznych linków</h3>
+              <div class="radio-stack">
+                <label>
+                  <input type="radio" name="safeLinkMode" value="full">
+                  <span>
+                    <strong>Pełne okienko</strong>
+                    <small>Pokazuje wynik ALLOW z akcją przejścia dalej i porównaniem z VirusTotal.</small>
+                  </span>
+                </label>
+                <label>
+                  <input type="radio" name="safeLinkMode" value="toast">
+                  <span>
+                    <strong>Małe powiadomienie</strong>
+                    <small>Pokazuje lekki zielony komunikat, a drugi klik w ten sam link przechodzi normalnie.</small>
+                  </span>
+                </label>
               </div>
             </section>
 

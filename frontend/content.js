@@ -1,6 +1,7 @@
 let guardyApiPromise;
 let activePopup;
 let activeToast;
+let cachedSettings = null;
 
 const ALLOW_CACHE_MS = 5 * 60 * 1000;
 const safeAllowUrls = new Map();
@@ -49,6 +50,7 @@ const ICONS = {
   back: '<path d="M9 7 4 12l5 5m-5-5h11a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
   clock: '<path d="M12 6v6l4 2m5-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
   externalLink: '<path d="M14 4h6v6m0-6-8 8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>',
+  brand: '<path d="M4.5 12a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M7.8 12a4.2 4.2 0 0 1 8.4 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M12 12v4.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M9.5 17.7c1.3.6 3.7.6 5 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M5.2 15.6c.7 1.2 1.7 2.2 2.9 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M18.8 15.6c-.7 1.2-1.7 2.2-2.9 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path>',
   settings: '<path d="M4 7h10m3 0h3M7 17h13M4 17h1m6-13v6m3 4v6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>'
 };
 
@@ -58,6 +60,15 @@ function loadApi() {
   }
 
   return guardyApiPromise;
+}
+
+async function refreshSettingsCache() {
+  try {
+    const api = await loadApi();
+    cachedSettings = await api.getSettings();
+  } catch (error) {
+    cachedSettings = null;
+  }
 }
 
 function findClickedLink(event) {
@@ -90,6 +101,10 @@ function shouldSkipBeforeSettings(url) {
 }
 
 function shouldSkipAfterSettings(url, settings) {
+  if (settings.scanMode === "manual") {
+    return true;
+  }
+
   if (settings.disabledDomains.includes(window.location.hostname)) {
     return true;
   }
@@ -462,18 +477,20 @@ function createPopupRoot(theme = "auto") {
         padding: 8px 12px;
         border: 1px solid rgba(210, 210, 215, 0.9);
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.78);
+        background: #ffffff;
         color: #1d1d1f;
         cursor: pointer;
         font: inherit;
         font-size: 13px;
-        font-weight: 560;
+        font-weight: 650;
         line-height: 1.2;
-        transition: opacity 150ms ease, transform 100ms ease, background 150ms ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: border-color 150ms ease, color 150ms ease, transform 100ms ease, background 150ms ease;
       }
 
       .guardy-action:hover {
-        opacity: 0.86;
+        border-color: rgba(0, 113, 227, 0.5);
+        background: #f5f5f7;
       }
 
       .guardy-action:active {
@@ -491,10 +508,26 @@ function createPopupRoot(theme = "auto") {
         color: #fff;
       }
 
+      .guardy-action.primary .guardy-action-icon {
+        color: currentColor;
+      }
+
+      .guardy-action.primary:hover {
+        border-color: #1d1d1f;
+        background: rgba(29, 29, 31, 0.88);
+      }
+
       .guardy-action[disabled] {
         cursor: default;
-        opacity: 0.62;
+        border-color: rgba(210, 210, 215, 0.9);
+        background: #f5f5f7;
+        color: #8e8e93;
+        opacity: 1;
         transform: none;
+      }
+
+      .guardy-action[disabled] .guardy-action-icon {
+        color: #8e8e93;
       }
 
       .guardy-action-progress {
@@ -597,6 +630,11 @@ function createPopupRoot(theme = "auto") {
           background: rgba(44, 44, 46, 0.86);
         }
 
+        .guardy-action:hover {
+          border-color: rgba(10, 132, 255, 0.55);
+          background: rgba(58, 58, 60, 0.94);
+        }
+
         .guardy-close {
           color: #98989d;
         }
@@ -610,6 +648,21 @@ function createPopupRoot(theme = "auto") {
           border-color: #f5f5f7;
           background: #f5f5f7;
           color: #1d1d1f;
+        }
+
+        .guardy-action.primary:hover {
+          border-color: #f5f5f7;
+          background: rgba(245, 245, 247, 0.86);
+        }
+
+        .guardy-action[disabled] {
+          border-color: rgba(56, 56, 58, 0.95);
+          background: rgba(58, 58, 60, 0.6);
+          color: #8e8e93;
+        }
+
+        .guardy-action[disabled] .guardy-action-icon {
+          color: #8e8e93;
         }
 
         .decision-allow .guardy-icon,
@@ -667,6 +720,11 @@ function createPopupRoot(theme = "auto") {
         background: rgba(44, 44, 46, 0.86);
       }
 
+      :host([data-theme="dark"]) .guardy-action:hover {
+        border-color: rgba(10, 132, 255, 0.55);
+        background: rgba(58, 58, 60, 0.94);
+      }
+
       :host([data-theme="dark"]) .guardy-close {
         color: #98989d;
       }
@@ -680,6 +738,21 @@ function createPopupRoot(theme = "auto") {
         border-color: #f5f5f7;
         background: #f5f5f7;
         color: #1d1d1f;
+      }
+
+      :host([data-theme="dark"]) .guardy-action.primary:hover {
+        border-color: #f5f5f7;
+        background: rgba(245, 245, 247, 0.86);
+      }
+
+      :host([data-theme="dark"]) .guardy-action[disabled] {
+        border-color: rgba(56, 56, 58, 0.95);
+        background: rgba(58, 58, 60, 0.6);
+        color: #8e8e93;
+      }
+
+      :host([data-theme="dark"]) .guardy-action[disabled] .guardy-action-icon {
+        color: #8e8e93;
       }
 
       :host([data-theme="dark"]) .decision-allow .guardy-icon,
@@ -722,6 +795,38 @@ function createPopupRoot(theme = "auto") {
       :host([data-theme="light"]) .guardy-vt-copy,
       :host([data-theme="light"]) .guardy-section-label {
         color: #6e6e73;
+      }
+
+      :host([data-theme="light"]) .guardy-action {
+        border-color: rgba(210, 210, 215, 0.9);
+        background: #ffffff;
+        color: #1d1d1f;
+      }
+
+      :host([data-theme="light"]) .guardy-action:hover {
+        border-color: rgba(0, 113, 227, 0.5);
+        background: #f5f5f7;
+      }
+
+      :host([data-theme="light"]) .guardy-action.primary {
+        border-color: #1d1d1f;
+        background: #1d1d1f;
+        color: #ffffff;
+      }
+
+      :host([data-theme="light"]) .guardy-action.primary:hover {
+        border-color: #1d1d1f;
+        background: rgba(29, 29, 31, 0.88);
+      }
+
+      :host([data-theme="light"]) .guardy-action[disabled] {
+        border-color: rgba(210, 210, 215, 0.9);
+        background: #f5f5f7;
+        color: #8e8e93;
+      }
+
+      :host([data-theme="light"]) .guardy-action[disabled] .guardy-action-icon {
+        color: #8e8e93;
       }
 
       @media (max-width: 620px) {
@@ -770,8 +875,7 @@ function createPopupRoot(theme = "auto") {
           <ul class="guardy-reasons" hidden></ul>
           <div class="guardy-brand" hidden>
             <svg class="guardy-brand-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4.8 12.7 12.7 4.8l6.5 6.5-7.9 7.9a2 2 0 0 1-2.8 0l-3.7-3.7a2 2 0 0 1 0-2.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
-              <path d="M8.5 8.5h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
+              ${ICONS.brand}
             </svg>
             <span></span>
           </div>
@@ -1012,7 +1116,8 @@ function renderReasons(popup, reasons) {
 
 function renderBrand(popup, matchedBrand) {
   if (!matchedBrand) {
-    popup.brand.hidden = true;
+    popup.brandText.textContent = "Brak podobieństwa do znanych brandów";
+    popup.brand.hidden = false;
     return;
   }
 
@@ -1292,16 +1397,20 @@ async function handleLinkClick(event) {
     return;
   }
 
+  const settings = cachedSettings;
+  if (!settings) {
+    refreshSettingsCache();
+    return;
+  }
+
+  if (shouldSkipAfterSettings(url, settings)) {
+    return;
+  }
+
   event.preventDefault();
   event.stopPropagation();
 
   const api = await loadApi();
-  const settings = await api.getSettings();
-
-  if (shouldSkipAfterSettings(url, settings)) {
-    followLink(link, url);
-    return;
-  }
 
   try {
     const result = await api.scanUrl(url.href);
@@ -1313,9 +1422,12 @@ async function handleLinkClick(event) {
 
     if (result.decision === "ALLOW") {
       rememberAllowedUrl(url);
-      showAllowToast(url, settings.theme);
-      runVirusTotalForToast(api, url, settings);
-      return;
+
+      if (settings.safeLinkMode === "toast") {
+        showAllowToast(url, settings.theme);
+        runVirusTotalForToast(api, url, settings);
+        return;
+      }
     }
 
     const popup = showCheckingPopup(link, url, settings.theme);
@@ -1339,3 +1451,20 @@ document.addEventListener("pointerdown", (event) => {
 
   closePopup();
 }, true);
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes.settings) {
+    return;
+  }
+
+  cachedSettings = {
+    ...(cachedSettings || {}),
+    ...(changes.settings.newValue || {})
+  };
+
+  if (cachedSettings.safeLinkMode !== "toast") {
+    safeAllowUrls.clear();
+  }
+});
+
+refreshSettingsCache();

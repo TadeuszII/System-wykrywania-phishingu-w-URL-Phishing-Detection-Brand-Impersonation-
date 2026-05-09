@@ -3,6 +3,7 @@ export const DEFAULT_SETTINGS = {
   vtKey: "",
   alwaysScanVirusTotal: false,
   scanMode: "all",
+  safeLinkMode: "full",
   theme: "auto",
   disabledDomains: []
 };

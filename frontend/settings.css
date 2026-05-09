@@ -546,6 +546,7 @@ input:focus {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 100;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -559,6 +560,7 @@ input:focus {
 
 .about-modal {
   position: relative;
+  z-index: 101;
   width: min(460px, 100%);
   padding: 28px;
   border-radius: 16px;
