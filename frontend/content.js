@@ -1413,7 +1413,7 @@ async function handleLinkClick(event) {
   const api = await loadApi();
 
   try {
-    const result = await api.scanUrl(url.href);
+    const result = await api.scanUrl(url.href, "clicked_link");
     await api.saveToHistory({
       ...result,
       url: url.href,

@@ -36,8 +36,8 @@ function sendMessage(type, payload = {}) {
   });
 }
 
-export function scanUrl(url) {
-  return sendMessage("SCAN_URL", { url });
+export function scanUrl(url, context = "clicked_link") {
+  return sendMessage("SCAN_URL", { url, context });
 }
 
 export function scanVT(url, vtKey) {

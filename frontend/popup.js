@@ -325,7 +325,7 @@ async function handleManualScan(event) {
   elements.manualScanMessage.textContent = "Guardy wysyła URL do backendu.";
 
   try {
-    const result = await scanUrl(url);
+    const result = await scanUrl(url, "manual_popup");
     await saveToHistory({
       ...result,
       url,

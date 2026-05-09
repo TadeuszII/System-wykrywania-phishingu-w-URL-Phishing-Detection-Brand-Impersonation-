@@ -39,12 +39,12 @@ async function requestBackend(path, options = {}) {
   return parseJsonResponse(response);
 }
 
-async function scanUrl(url) {
+async function scanUrl(url, context = "clicked_link") {
   return requestBackend("/scan/url", {
     method: "POST",
     body: JSON.stringify({
       url,
-      context: "clicked_link"
+      context
     })
   });
 }
@@ -72,7 +72,7 @@ async function handleMessage(message) {
 
   switch (message.type) {
     case MESSAGE_TYPES.SCAN_URL:
-      return scanUrl(message.url);
+      return scanUrl(message.url, message.context);
     case MESSAGE_TYPES.SCAN_VT:
       return scanVirusTotal(message.url, message.vtKey);
     case MESSAGE_TYPES.GET_HEALTH:
