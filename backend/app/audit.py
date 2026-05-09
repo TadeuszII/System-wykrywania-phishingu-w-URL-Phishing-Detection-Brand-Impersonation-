@@ -8,7 +8,14 @@ from sqlalchemy.orm import Session
 from app.models import AuditLogORM, ScanRequest, ScanResult
 
 GENESIS_HASH = "GENESIS"
-DEFAULT_SCAN_SOURCE = "chrome_extension"
+DEFAULT_SCAN_SOURCE = "api_direct"
+CONTEXT_SOURCE_MAP = {
+    "clicked_link": "chrome_extension/clicked_link",
+    "manual_popup": "chrome_extension/manual_popup",
+    "test_suite": "test_suite",
+    "seed": "seed",
+    "batch_scan": "batch_scan",
+}
 
 
 def isoformat(value: datetime) -> str:
@@ -58,12 +65,23 @@ def get_previous_chain_hash(db: Session) -> str:
     return latest.chain_hash if latest else GENESIS_HASH
 
 
+def resolve_source(context: str | None) -> str:
+    if context is None:
+        return DEFAULT_SCAN_SOURCE
+
+    normalized_context = context.strip().lower()
+    if not normalized_context:
+        return DEFAULT_SCAN_SOURCE
+
+    return CONTEXT_SOURCE_MAP.get(normalized_context, DEFAULT_SCAN_SOURCE)
+
+
 def append_scan_log(
     db: Session,
     request_payload: ScanRequest,
     result: ScanResult,
-    source: str = DEFAULT_SCAN_SOURCE,
 ) -> AuditLogORM:
+    source = resolve_source(request_payload.context)
     request_hash = build_request_hash(request_payload.url, result.timestamp)
     audit_payload = build_audit_payload(
         url=request_payload.url,

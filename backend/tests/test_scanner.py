@@ -17,7 +17,7 @@ os.environ["ADMIN_API_KEY"] = "test_admin_key"
 
 from fastapi.testclient import TestClient
 
-from app.audit import verify_chain
+from app.audit import resolve_source, verify_chain
 from app.database import SessionLocal
 from app.main import app
 from app.scanner.brand_detector import detect_brand_impersonation
@@ -71,6 +71,40 @@ def test_rules_detect_punycode():
     result = analyze_url("http://xn--pypal-4va.com/login")
     assert result.rule_score >= 25
     assert "Punycode or IDN domain detected" in result.reasons
+
+
+def test_rules_detect_free_hosting_platform_as_soft_signal():
+    result = analyze_url("https://project.vercel.app")
+    assert result.rule_score == 10
+    assert "Commonly abused free hosting platform detected" in result.reasons
+
+
+def test_rules_combine_free_hosting_with_suspicious_keywords():
+    result = analyze_url("https://paypal-login.pages.dev/verify")
+    assert result.rule_score > 10
+    assert "Commonly abused free hosting platform detected" in result.reasons
+    assert "Suspicious keyword detected: login" in result.reasons
+
+
+def test_rules_detect_suspicious_free_hosting_support_page():
+    result = analyze_url("https://goes326-goutian-bc.pages.dev/help/contact/206000278552756")
+    assert result.rule_score >= 70
+    assert "Commonly abused free hosting platform detected" in result.reasons
+    assert "Suspicious free-hosting subdomain detected" in result.reasons
+    assert "Support-themed path on free hosting platform" in result.reasons
+    assert "Long numeric path token detected" in result.reasons
+
+
+def test_rules_do_not_penalize_normal_contact_path():
+    result = analyze_url("https://example.com/contact")
+    assert result.rule_score == 0
+    assert result.reasons == ["No suspicious patterns detected"]
+
+
+def test_rules_detect_long_numeric_path_token_globally():
+    result = analyze_url("https://example.com/ticket/206000278552756")
+    assert result.rule_score == 10
+    assert "Long numeric path token detected" in result.reasons
 
 
 def test_brand_detection_ignores_official_domain():
@@ -151,6 +185,30 @@ def test_brand_detection_ignores_lithuanian_official_bank_domain():
     assert result.matched_brand is None
 
 
+def test_brand_detection_ignores_any_official_domain_before_lookalike_checks():
+    brands = load_seed_brands()
+
+    github_result = detect_brand_impersonation("https://github.com", brands)
+    gitlab_result = detect_brand_impersonation("https://gitlab.com", brands)
+
+    assert github_result.brand_penalty == 0
+    assert github_result.matched_brand is None
+    assert gitlab_result.brand_penalty == 0
+    assert gitlab_result.matched_brand is None
+
+
+def test_brand_detection_still_detects_github_and_gitlab_impersonation():
+    brands = load_seed_brands()
+
+    github_result = detect_brand_impersonation("http://github-login.xyz", brands)
+    gitlab_result = detect_brand_impersonation("http://gitlab-security.xyz", brands)
+
+    assert github_result.matched_brand == "GitHub"
+    assert github_result.brand_penalty > 0
+    assert gitlab_result.matched_brand == "GitLab"
+    assert gitlab_result.brand_penalty > 0
+
+
 def test_scan_url_warns_on_invalid_url():
     with TestClient(app) as client:
         response = client.post("/scan/url", json={"url": "not a url"})
@@ -168,6 +226,45 @@ def test_scan_url_blocks_phishing_url():
     assert payload["decision"] == "BLOCK"
     assert payload["risk_score"] >= 70
     assert payload["matched_brand"] == "PayPal"
+
+
+def test_scan_url_allows_official_auth_paths():
+    with TestClient(app) as client:
+        instagram_response = client.post(
+            "/scan/url",
+            json={"url": "https://www.instagram.com/accounts/login/"},
+        )
+        github_response = client.post(
+            "/scan/url",
+            json={"url": "https://github.com/login"},
+        )
+
+    instagram_payload = instagram_response.json()
+    github_payload = github_response.json()
+
+    assert instagram_response.status_code == 200
+    assert instagram_payload["decision"] == "ALLOW"
+    assert instagram_payload["risk_score"] <= 25
+    assert github_response.status_code == 200
+    assert github_payload["decision"] == "ALLOW"
+    assert github_payload["risk_score"] <= 25
+
+
+def test_scan_url_does_not_cap_impersonation_or_misleading_domains():
+    with TestClient(app) as client:
+        impersonation_response = client.post(
+            "/scan/url",
+            json={"url": "http://instagram-help-center-login.xyz"},
+        )
+        misleading_response = client.post(
+            "/scan/url",
+            json={"url": "https://instagram.com.evil.xyz/accounts/login"},
+        )
+
+    assert impersonation_response.status_code == 200
+    assert impersonation_response.json()["decision"] == "BLOCK"
+    assert misleading_response.status_code == 200
+    assert misleading_response.json()["decision"] != "ALLOW"
 
 
 def test_admin_brands_requires_api_key():
@@ -202,3 +299,34 @@ def test_audit_logs_are_not_editable_by_api():
     with TestClient(app) as client:
         response = client.delete("/audit/logs", headers={"X-API-Key": "test_admin_key"})
     assert response.status_code == 405
+
+
+def test_audit_source_mapping():
+    assert resolve_source("clicked_link") == "chrome_extension/clicked_link"
+    assert resolve_source("manual_popup") == "chrome_extension/manual_popup"
+    assert resolve_source("test_suite") == "test_suite"
+    assert resolve_source("seed") == "seed"
+    assert resolve_source("batch_scan") == "batch_scan"
+    assert resolve_source(None) == "api_direct"
+    assert resolve_source("unknown_context") == "api_direct"
+
+
+def test_scan_url_records_clicked_link_source():
+    with TestClient(app) as client:
+        client.post(
+            "/scan/url",
+            json={"url": "https://www.google.com", "context": "clicked_link"},
+        )
+        response = client.get("/audit/logs", headers={"X-API-Key": "test_admin_key"})
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["source"] == "chrome_extension/clicked_link"
+
+
+def test_scan_url_records_api_direct_source_without_context():
+    with TestClient(app) as client:
+        client.post("/scan/url", json={"url": "https://www.google.com"})
+        response = client.get("/audit/logs", headers={"X-API-Key": "test_admin_key"})
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["source"] == "api_direct"
