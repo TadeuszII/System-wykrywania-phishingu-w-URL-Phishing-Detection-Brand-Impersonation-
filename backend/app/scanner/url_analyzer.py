@@ -48,6 +48,7 @@ URL_SHORTENERS = {
     "is.gd",
     "buff.ly",
     "cutt.ly",
+    "q-r.to",
     "rb.gy",
     "shorturl.at",
     "tiny.cc",
@@ -141,6 +142,17 @@ def has_support_themed_path(path: str) -> bool:
     return bool(segments.intersection({"help", "contact", "support"}))
 
 
+def get_port(parsed_url) -> int | None:
+    try:
+        return parsed_url.port
+    except ValueError:
+        return None
+
+
+def has_random_domain_structure(value: str) -> bool:
+    return any(char.isdigit() for char in value) or "-" in value or len(value) >= 20
+
+
 def analyze_url(url: str) -> RuleAnalysis:
     reasons: list[str] = []
     score = 0
@@ -159,9 +171,13 @@ def analyze_url(url: str) -> RuleAnalysis:
     tld = get_tld(hostname)
     path_and_query = f"{parsed.path}?{parsed.query}".lower()
     domain_without_tld = hostname.rsplit(".", 1)[0]
+    port = get_port(parsed)
 
     if tld in SUSPICIOUS_TLDS:
         score = add_rule(score, reasons, 15, "Suspicious TLD detected")
+
+    if port and port not in {80, 443}:
+        score = add_rule(score, reasons, 30, "Suspicious non-standard port detected")
 
     if len(normalized_url) > 100:
         score = add_rule(score, reasons, 10, "Long URL detected")
@@ -182,7 +198,8 @@ def analyze_url(url: str) -> RuleAnalysis:
         if keyword in path_and_query or keyword in hostname:
             score = add_rule(score, reasons, 15, f"Suspicious keyword detected: {keyword}")
 
-    if shannon_entropy(domain_without_tld) > 3.5:
+    entropy_target = domain_without_tld.replace(".", "")
+    if shannon_entropy(entropy_target) > 3.7 and has_random_domain_structure(entropy_target):
         score = add_rule(score, reasons, 20, "High domain entropy")
 
     if is_ip_address(hostname):

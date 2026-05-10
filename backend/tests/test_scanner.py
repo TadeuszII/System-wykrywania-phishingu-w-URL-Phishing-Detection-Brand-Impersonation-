@@ -21,6 +21,7 @@ from app.audit import resolve_source, verify_chain
 from app.database import SessionLocal
 from app.main import app
 from app.scanner.brand_detector import detect_brand_impersonation
+from app.scanner.normalization import normalize_scan_url
 from app.scanner.url_analyzer import analyze_url
 
 
@@ -49,9 +50,22 @@ def test_rules_allow_safe_url():
     assert result.reasons == ["No suspicious patterns detected"]
 
 
+def test_normalize_scan_url_removes_only_root_slash():
+    assert normalize_scan_url("https://www.google.com/") == "https://www.google.com"
+    assert normalize_scan_url("https://www.google.com/login") == "https://www.google.com/login"
+    assert normalize_scan_url("https://www.google.com/path/") == "https://www.google.com/path/"
+    assert normalize_scan_url("https://www.google.com/search?q=test") == "https://www.google.com/search?q=test"
+
+
 def test_rules_detect_url_shortener():
     result = analyze_url("https://bit.ly/3xKp9qR")
     assert result.rule_score >= 20
+    assert "URL shortener detected" in result.reasons
+
+
+def test_rules_detect_qr_shortener():
+    result = analyze_url("https://q-r.to/bgbfmu")
+    assert result.rule_score >= 30
     assert "URL shortener detected" in result.reasons
 
 
@@ -107,6 +121,20 @@ def test_rules_detect_long_numeric_path_token_globally():
     assert "Long numeric path token detected" in result.reasons
 
 
+def test_rules_ignore_entropy_for_normal_known_domains():
+    stackoverflow_result = analyze_url("https://stackoverflow.com/users/login")
+    cloudflare_result = analyze_url("https://dash.cloudflare.com/login")
+
+    assert "High domain entropy" not in stackoverflow_result.reasons
+    assert "High domain entropy" not in cloudflare_result.reasons
+
+
+def test_rules_detect_non_standard_port():
+    result = analyze_url("http://paypal.com:8080/login")
+    assert result.rule_score >= 45
+    assert "Suspicious non-standard port detected" in result.reasons
+
+
 def test_brand_detection_ignores_official_domain():
     result = detect_brand_impersonation("https://www.paypal.com/signin", BRANDS)
     assert result.brand_penalty == 0
@@ -117,6 +145,14 @@ def test_brand_detection_finds_lookalike():
     result = detect_brand_impersonation("http://paypa1.com/login", BRANDS)
     assert result.matched_brand == "PayPal"
     assert result.brand_penalty > 0
+
+
+def test_brand_detection_does_not_attribute_generic_punycode_to_brand():
+    result = detect_brand_impersonation("http://xn--pypal-4va.com/login", load_seed_brands())
+
+    assert result.brand_penalty == 20
+    assert result.matched_brand is None
+    assert result.reasons == ["Punycode or IDN domain detected"]
 
 
 def test_brand_seed_has_at_least_100_unique_profiles():
@@ -179,6 +215,70 @@ def test_brand_detection_finds_lithuanian_marketplace_from_seed():
     assert result.brand_penalty > 0
 
 
+def test_brand_detection_prefers_token_keyword_over_embedded_substring():
+    result = detect_brand_impersonation("https://dpd-delivery-track.wixstudio.com/pay", load_seed_brands())
+
+    assert result.matched_brand == "DPD"
+    assert result.brand_penalty > 0
+    assert "Brand keyword used outside official domain: DPD" in result.reasons
+
+
+def test_brand_detection_ignores_weak_live_keyword_as_standalone_brand_signal():
+    result = detect_brand_impersonation("https://live-support-case.pages.dev/login", load_seed_brands())
+
+    assert result.matched_brand is None
+    assert result.brand_penalty == 0
+    assert result.reasons == []
+
+
+def test_brand_detection_finds_token_level_brand_lookalikes():
+    brands = load_seed_brands()
+
+    cases = {
+        "http://g00gle-login.com": "Google",
+        "http://micros0ft-security.com": "Microsoft",
+        "http://paypaI-verification.com": "PayPal",
+        "http://app1e-id-login.com": "Apple",
+        "http://linkedln-security.com": "LinkedIn",
+    }
+
+    for url, expected_brand in cases.items():
+        result = detect_brand_impersonation(url, brands)
+        assert result.matched_brand == expected_brand
+        assert result.brand_penalty > 0
+
+
+def test_brand_detection_avoids_short_brand_false_attribution():
+    brands = load_seed_brands()
+
+    amazon_result = detect_brand_impersonation("http://amaz0n-billing.com", brands)
+    netflix_result = detect_brand_impersonation("http://netfIix-account.com", brands)
+
+    assert amazon_result.matched_brand == "Amazon"
+    assert "ING" not in (amazon_result.matched_brand or "")
+    assert netflix_result.matched_brand == "Netflix"
+    assert netflix_result.matched_brand != "X"
+
+
+def test_brand_detection_finds_omniva_from_seed():
+    result = detect_brand_impersonation("http://omniva-tracking-payment.com", load_seed_brands())
+
+    assert result.matched_brand == "Omniva"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_handles_microsoft_online_official_and_impersonation():
+    brands = load_seed_brands()
+
+    official_result = detect_brand_impersonation("https://login.microsoftonline.com", brands)
+    impersonation_result = detect_brand_impersonation("http://login.microsoftonline.com.verify-session.com", brands)
+
+    assert official_result.brand_penalty == 0
+    assert official_result.matched_brand is None
+    assert impersonation_result.matched_brand == "Microsoft Online"
+    assert impersonation_result.brand_penalty > 0
+
+
 def test_brand_detection_ignores_lithuanian_official_bank_domain():
     result = detect_brand_impersonation("https://www.seb.lt/", load_seed_brands())
     assert result.brand_penalty == 0
@@ -218,6 +318,23 @@ def test_scan_url_warns_on_invalid_url():
     assert "Invalid URL format" in payload["reasons"]
 
 
+def test_scan_url_scores_root_slash_variants_consistently():
+    with TestClient(app) as client:
+        www_response = client.post("/scan/url", json={"url": "https://www.google.com"})
+        www_slash_response = client.post("/scan/url", json={"url": "https://www.google.com/"})
+        bare_response = client.post("/scan/url", json={"url": "https://google.com"})
+        bare_slash_response = client.post("/scan/url", json={"url": "https://google.com/"})
+
+    assert www_response.status_code == 200
+    assert www_slash_response.status_code == 200
+    assert bare_response.status_code == 200
+    assert bare_slash_response.status_code == 200
+    assert www_response.json()["risk_score"] == www_slash_response.json()["risk_score"]
+    assert www_response.json()["decision"] == www_slash_response.json()["decision"]
+    assert bare_response.json()["risk_score"] == bare_slash_response.json()["risk_score"]
+    assert bare_response.json()["decision"] == bare_slash_response.json()["decision"]
+
+
 def test_scan_url_blocks_phishing_url():
     with TestClient(app) as client:
         response = client.post("/scan/url", json={"url": "http://paypal-secure-login.xyz/verify"})
@@ -238,9 +355,14 @@ def test_scan_url_allows_official_auth_paths():
             "/scan/url",
             json={"url": "https://github.com/login"},
         )
+        bank_response = client.post(
+            "/scan/url",
+            json={"url": "https://secure.bankofamerica.com/login/sign-in/signOnV2Screen.go"},
+        )
 
     instagram_payload = instagram_response.json()
     github_payload = github_response.json()
+    bank_payload = bank_response.json()
 
     assert instagram_response.status_code == 200
     assert instagram_payload["decision"] == "ALLOW"
@@ -248,6 +370,9 @@ def test_scan_url_allows_official_auth_paths():
     assert github_response.status_code == 200
     assert github_payload["decision"] == "ALLOW"
     assert github_payload["risk_score"] <= 25
+    assert bank_response.status_code == 200
+    assert bank_payload["decision"] == "ALLOW"
+    assert bank_payload["risk_score"] <= 25
 
 
 def test_scan_url_does_not_cap_impersonation_or_misleading_domains():
@@ -265,6 +390,49 @@ def test_scan_url_does_not_cap_impersonation_or_misleading_domains():
     assert impersonation_response.json()["decision"] == "BLOCK"
     assert misleading_response.status_code == 200
     assert misleading_response.json()["decision"] != "ALLOW"
+
+
+def test_scan_url_does_not_cap_non_standard_port_on_official_domain():
+    with TestClient(app) as client:
+        response = client.post(
+            "/scan/url",
+            json={"url": "http://paypal.com:8080/login"},
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["decision"] != "ALLOW"
+    assert "Suspicious non-standard port detected" in payload["reasons"]
+
+
+def test_scan_url_keeps_secure_brand_impersonation_blocked():
+    with TestClient(app) as client:
+        response = client.post(
+            "/scan/url",
+            json={"url": "http://secure-bankofamerica-login.xyz"},
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["decision"] == "BLOCK"
+    assert payload["matched_brand"] == "Bank of America"
+
+
+def test_scan_url_keeps_free_hosting_and_typo_phishing_risky():
+    with TestClient(app) as client:
+        hosting_response = client.post(
+            "/scan/url",
+            json={"url": "https://goes326-goutian-bc.pages.dev/help/contact/206000278552756"},
+        )
+        typo_response = client.post(
+            "/scan/url",
+            json={"url": "http://g00gle.com/account/verify"},
+        )
+
+    assert hosting_response.status_code == 200
+    assert hosting_response.json()["decision"] == "BLOCK"
+    assert typo_response.status_code == 200
+    assert typo_response.json()["decision"] != "ALLOW"
 
 
 def test_admin_brands_requires_api_key():
