@@ -55,6 +55,12 @@ def test_rules_detect_url_shortener():
     assert "URL shortener detected" in result.reasons
 
 
+def test_rules_detect_qr_shortener():
+    result = analyze_url("https://q-r.to/bgbfmu")
+    assert result.rule_score >= 30
+    assert "URL shortener detected" in result.reasons
+
+
 def test_rules_detect_ip_address():
     result = analyze_url("http://192.168.1.1/login/verify")
     assert result.rule_score >= 25
@@ -252,9 +258,14 @@ def test_scan_url_allows_official_auth_paths():
             "/scan/url",
             json={"url": "https://github.com/login"},
         )
+        bank_response = client.post(
+            "/scan/url",
+            json={"url": "https://secure.bankofamerica.com/login/sign-in/signOnV2Screen.go"},
+        )
 
     instagram_payload = instagram_response.json()
     github_payload = github_response.json()
+    bank_payload = bank_response.json()
 
     assert instagram_response.status_code == 200
     assert instagram_payload["decision"] == "ALLOW"
@@ -262,6 +273,9 @@ def test_scan_url_allows_official_auth_paths():
     assert github_response.status_code == 200
     assert github_payload["decision"] == "ALLOW"
     assert github_payload["risk_score"] <= 25
+    assert bank_response.status_code == 200
+    assert bank_payload["decision"] == "ALLOW"
+    assert bank_payload["risk_score"] <= 25
 
 
 def test_scan_url_does_not_cap_impersonation_or_misleading_domains():
@@ -292,6 +306,19 @@ def test_scan_url_does_not_cap_non_standard_port_on_official_domain():
     assert response.status_code == 200
     assert payload["decision"] != "ALLOW"
     assert "Suspicious non-standard port detected" in payload["reasons"]
+
+
+def test_scan_url_keeps_secure_brand_impersonation_blocked():
+    with TestClient(app) as client:
+        response = client.post(
+            "/scan/url",
+            json={"url": "http://secure-bankofamerica-login.xyz"},
+        )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["decision"] == "BLOCK"
+    assert payload["matched_brand"] == "Bank of America"
 
 
 def test_scan_url_keeps_free_hosting_and_typo_phishing_risky():

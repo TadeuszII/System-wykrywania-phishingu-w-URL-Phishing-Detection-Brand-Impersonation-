@@ -48,6 +48,7 @@ URL_SHORTENERS = {
     "is.gd",
     "buff.ly",
     "cutt.ly",
+    "q-r.to",
     "rb.gy",
     "shorturl.at",
     "tiny.cc",

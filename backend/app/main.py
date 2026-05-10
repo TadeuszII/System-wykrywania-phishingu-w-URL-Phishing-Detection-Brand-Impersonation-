@@ -39,6 +39,7 @@ OFFICIAL_AUTH_KEYWORD_REASONS = {
     "Suspicious keyword detected: login",
     "Suspicious keyword detected: password",
     "Suspicious keyword detected: security",
+    "Suspicious keyword detected: secure",
     "Suspicious keyword detected: signin",
 }
 
