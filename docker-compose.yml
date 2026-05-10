@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-admin_api_key}
+      DATABASE_URL: sqlite:////data/guardy.db
+    volumes:
+      - guardy-data:/data
+    restart: unless-stopped
+
+volumes:
+  guardy-data:
