@@ -1,5 +1,20 @@
 from dataclasses import dataclass
+import re
 from urllib.parse import urlparse
+
+WEAK_BRAND_KEYWORDS = {"live"}
+GENERIC_LOOKALIKE_TOKENS = {
+    "account",
+    "auth",
+    "billing",
+    "login",
+    "payment",
+    "secure",
+    "security",
+    "support",
+    "verify",
+    "verification",
+}
 
 
 @dataclass(frozen=True)
@@ -77,6 +92,53 @@ def add_signal(
     return min(40, current_penalty + points)
 
 
+def has_brand_specific_reason(reasons: list[str]) -> bool:
+    return any(reason != "Punycode or IDN domain detected" for reason in reasons)
+
+
+def hostname_tokens(hostname: str) -> set[str]:
+    return {token for token in re.split(r"[^a-z0-9]+", hostname.lower()) if token}
+
+
+def root_label_tokens(root_label: str) -> list[str]:
+    return [token for token in re.split(r"[^a-z0-9]+", root_label.lower()) if len(token) >= 4]
+
+
+def is_generic_lookalike_token(token: str) -> bool:
+    return token in GENERIC_LOOKALIKE_TOKENS
+
+
+def official_root_appears_as_subdomain(hostname: str, official_root: str) -> bool:
+    return hostname.startswith(f"{official_root}.") or f".{official_root}." in hostname
+
+
+def keyword_matches_hostname(keyword: str, hostname: str, root_label: str) -> bool:
+    normalized_keyword = keyword.lower()
+    compact_keyword = normalized_keyword.replace("-", "")
+    if compact_keyword in WEAK_BRAND_KEYWORDS:
+        return False
+
+    compact_root = root_label.replace("-", "")
+    tokens = hostname_tokens(hostname)
+
+    if normalized_keyword in tokens or compact_keyword in tokens:
+        return True
+
+    if len(compact_keyword) >= 5:
+        return normalized_keyword in hostname or ("-" not in normalized_keyword and compact_keyword in compact_root)
+
+    return False
+
+
+def token_lookalike_distance(token: str, official_label: str) -> int | None:
+    if is_generic_lookalike_token(token) or token == official_label:
+        return None
+
+    distance = levenshtein_distance(token, official_label)
+    allowed_distance = 2 if any(char.isdigit() for char in token) and len(official_label) >= 5 else 1
+    return distance if distance <= allowed_distance else None
+
+
 def coerce_brand(brand: BrandInput | dict | object) -> BrandInput:
     if isinstance(brand, BrandInput):
         return brand
@@ -127,7 +189,14 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
                 elif distance == 2:
                     penalty = add_signal(penalty, reasons, 20, f"Possible brand lookalike detected: {brand.brand_name}")
 
-            if official_root in hostname and root_domain != official_root:
+            for token in root_label_tokens(root_label):
+                distance = token_lookalike_distance(token, official_label)
+                if distance == 1:
+                    penalty = add_signal(penalty, reasons, 30, f"Brand lookalike detected: {brand.brand_name}")
+                elif distance == 2:
+                    penalty = add_signal(penalty, reasons, 20, f"Possible brand lookalike detected: {brand.brand_name}")
+
+            if official_root_appears_as_subdomain(hostname, official_root) and root_domain != official_root:
                 penalty = add_signal(penalty, reasons, 30, f"Misleading brand subdomain detected: {brand.brand_name}")
 
         if is_punycode and any(keyword.replace("-", "") in hostname.replace("-", "") for keyword in keywords):
@@ -136,9 +205,7 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
             penalty = add_signal(penalty, reasons, 20, "Punycode or IDN domain detected")
 
         for keyword in keywords:
-            compact_keyword = keyword.replace("-", "")
-            compact_root = root_label.replace("-", "")
-            if keyword in hostname or compact_keyword in compact_root:
+            if keyword_matches_hostname(keyword, hostname, root_label):
                 penalty = add_signal(penalty, reasons, 20, f"Brand keyword used outside official domain: {brand.brand_name}")
                 break
 
@@ -152,7 +219,7 @@ def detect_brand_impersonation(url: str, brands: list[BrandInput | dict | object
 
         if penalty > best_penalty:
             best_penalty = penalty
-            best_brand = brand.brand_name
+            best_brand = brand.brand_name if has_brand_specific_reason(reasons) else None
             best_reasons = reasons
 
     return BrandDetection(

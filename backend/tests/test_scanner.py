@@ -147,6 +147,14 @@ def test_brand_detection_finds_lookalike():
     assert result.brand_penalty > 0
 
 
+def test_brand_detection_does_not_attribute_generic_punycode_to_brand():
+    result = detect_brand_impersonation("http://xn--pypal-4va.com/login", load_seed_brands())
+
+    assert result.brand_penalty == 20
+    assert result.matched_brand is None
+    assert result.reasons == ["Punycode or IDN domain detected"]
+
+
 def test_brand_seed_has_at_least_100_unique_profiles():
     brands = load_seed_brands()
     brand_names = [brand["brand_name"] for brand in brands]
@@ -205,6 +213,70 @@ def test_brand_detection_finds_lithuanian_marketplace_from_seed():
     result = detect_brand_impersonation("http://skelbiu-payment-confirm.xyz", load_seed_brands())
     assert result.matched_brand == "Skelbiu.lt"
     assert result.brand_penalty > 0
+
+
+def test_brand_detection_prefers_token_keyword_over_embedded_substring():
+    result = detect_brand_impersonation("https://dpd-delivery-track.wixstudio.com/pay", load_seed_brands())
+
+    assert result.matched_brand == "DPD"
+    assert result.brand_penalty > 0
+    assert "Brand keyword used outside official domain: DPD" in result.reasons
+
+
+def test_brand_detection_ignores_weak_live_keyword_as_standalone_brand_signal():
+    result = detect_brand_impersonation("https://live-support-case.pages.dev/login", load_seed_brands())
+
+    assert result.matched_brand is None
+    assert result.brand_penalty == 0
+    assert result.reasons == []
+
+
+def test_brand_detection_finds_token_level_brand_lookalikes():
+    brands = load_seed_brands()
+
+    cases = {
+        "http://g00gle-login.com": "Google",
+        "http://micros0ft-security.com": "Microsoft",
+        "http://paypaI-verification.com": "PayPal",
+        "http://app1e-id-login.com": "Apple",
+        "http://linkedln-security.com": "LinkedIn",
+    }
+
+    for url, expected_brand in cases.items():
+        result = detect_brand_impersonation(url, brands)
+        assert result.matched_brand == expected_brand
+        assert result.brand_penalty > 0
+
+
+def test_brand_detection_avoids_short_brand_false_attribution():
+    brands = load_seed_brands()
+
+    amazon_result = detect_brand_impersonation("http://amaz0n-billing.com", brands)
+    netflix_result = detect_brand_impersonation("http://netfIix-account.com", brands)
+
+    assert amazon_result.matched_brand == "Amazon"
+    assert "ING" not in (amazon_result.matched_brand or "")
+    assert netflix_result.matched_brand == "Netflix"
+    assert netflix_result.matched_brand != "X"
+
+
+def test_brand_detection_finds_omniva_from_seed():
+    result = detect_brand_impersonation("http://omniva-tracking-payment.com", load_seed_brands())
+
+    assert result.matched_brand == "Omniva"
+    assert result.brand_penalty > 0
+
+
+def test_brand_detection_handles_microsoft_online_official_and_impersonation():
+    brands = load_seed_brands()
+
+    official_result = detect_brand_impersonation("https://login.microsoftonline.com", brands)
+    impersonation_result = detect_brand_impersonation("http://login.microsoftonline.com.verify-session.com", brands)
+
+    assert official_result.brand_penalty == 0
+    assert official_result.matched_brand is None
+    assert impersonation_result.matched_brand == "Microsoft Online"
+    assert impersonation_result.brand_penalty > 0
 
 
 def test_brand_detection_ignores_lithuanian_official_bank_domain():

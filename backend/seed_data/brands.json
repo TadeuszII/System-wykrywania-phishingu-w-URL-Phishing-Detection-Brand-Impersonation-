@@ -1,4 +1,5 @@
 [
+  {"brand_name": "Microsoft Online", "official_domains": ["microsoftonline.com", "login.microsoftonline.com"], "keywords": ["microsoftonline"]},
   {"brand_name": "Microsoft", "official_domains": ["microsoft.com", "office.com", "outlook.com", "live.com"], "keywords": ["microsoft", "office", "office365", "outlook", "live"]},
   {"brand_name": "Google", "official_domains": ["google.com", "gmail.com", "youtube.com", "accounts.google.com"], "keywords": ["google", "gmail", "youtube", "googledrive"]},
   {"brand_name": "Apple", "official_domains": ["apple.com", "icloud.com", "itunes.com"], "keywords": ["apple", "icloud", "itunes", "appleid"]},
@@ -37,6 +38,7 @@
   {"brand_name": "UPS", "official_domains": ["ups.com"], "keywords": ["ups"]},
   {"brand_name": "USPS", "official_domains": ["usps.com"], "keywords": ["usps", "postal"]},
   {"brand_name": "DPD", "official_domains": ["dpd.com", "dpdgroup.com", "dpd.lt"], "keywords": ["dpd", "dpdgroup", "dpdlietuva"]},
+  {"brand_name": "Omniva", "official_domains": ["omniva.lt", "omniva.ee", "omniva.lv"], "keywords": ["omniva"]},
   {"brand_name": "Royal Mail", "official_domains": ["royalmail.com"], "keywords": ["royalmail", "royal-mail"]},
   {"brand_name": "InPost", "official_domains": ["inpost.pl", "inpost.eu"], "keywords": ["inpost", "paczkomat"]},
   {"brand_name": "Allegro", "official_domains": ["allegro.pl"], "keywords": ["allegro"]},
