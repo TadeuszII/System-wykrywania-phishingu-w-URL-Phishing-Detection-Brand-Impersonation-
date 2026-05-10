@@ -140,6 +140,10 @@ function rememberAllowedUrl(url) {
   safeAllowUrls.set(url.href, Date.now());
 }
 
+function forgetAllowedUrl(url) {
+  safeAllowUrls.delete(url.href);
+}
+
 function wasRecentlyAllowed(url) {
   const timestamp = safeAllowUrls.get(url.href);
 
@@ -569,7 +573,7 @@ function createPopupRoot(theme = "auto") {
         border-radius: 8px;
         background: rgba(245, 245, 247, 0.86);
         color: #6e6e73;
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.35;
       }
 
@@ -827,6 +831,12 @@ function createPopupRoot(theme = "auto") {
 
       :host([data-theme="light"]) .guardy-action[disabled] .guardy-action-icon {
         color: #8e8e93;
+      }
+
+      :host([data-theme="light"]) .guardy-vt-note {
+        border-color: rgba(210, 210, 215, 0.78);
+        background: rgba(245, 245, 247, 0.86);
+        color: #6e6e73;
       }
 
       @media (max-width: 620px) {
@@ -1254,6 +1264,7 @@ async function runVirusTotalForPopup(api, popup, url, link, settings) {
 
   try {
     const vtResult = await api.scanVT(url.href, settings.vtKey);
+    applyEffectiveDecisionToPopup(popup, popup.guardyResult, vtResult.vt_decision, link, url);
     showVirusTotalPanel(popup, "result", vtResult);
   } catch (error) {
     showVirusTotalPanel(popup, "error");
@@ -1262,16 +1273,60 @@ async function runVirusTotalForPopup(api, popup, url, link, settings) {
   schedulePopupPosition(popup, link);
 }
 
-async function runVirusTotalForToast(api, url, settings) {
-  if (!settings.alwaysScanVirusTotal || !settings.vtKey) {
+function normalizeDecision(decision) {
+  return DECISION_META[decision] ? decision : "WARN";
+}
+
+function getEffectiveDecision(guardyDecision, vtDecision) {
+  return normalizeDecision(vtDecision || guardyDecision);
+}
+
+function applyEffectiveDecisionToPopup(popup, guardyResult, vtDecision, link, url) {
+  if (!guardyResult) {
     return;
   }
 
+  const effectiveDecision = getEffectiveDecision(guardyResult.decision, vtDecision);
+
+  if (effectiveDecision === "ALLOW") {
+    rememberAllowedUrl(url);
+  } else {
+    forgetAllowedUrl(url);
+  }
+
+  setPopupDone(popup, guardyResult, link, url, guardyResult, effectiveDecision);
+}
+
+async function getAutomaticVirusTotalResult(api, url, settings) {
+  if (!settings.alwaysScanVirusTotal) {
+    return { state: "skipped", result: null };
+  }
+
+  if (!settings.vtKey) {
+    return { state: "missing-key", result: null };
+  }
+
   try {
-    const vtResult = await api.scanVT(url.href, settings.vtKey);
-    showAllowToast(url, settings.theme, `Guardy: ALLOW, VT: ${vtResult.vt_decision || "OK"}`);
+    return {
+      state: "result",
+      result: await api.scanVT(url.href, settings.vtKey)
+    };
   } catch (error) {
-    showAllowToast(url, settings.theme, "Link wygląda bezpiecznie");
+    return { state: "error", result: null };
+  }
+}
+
+function showAutomaticVirusTotalPanel(popup, vtState, vtResult, link) {
+  if (vtState === "result") {
+    showVirusTotalPanel(popup, "result", vtResult);
+  } else if (vtState === "missing-key") {
+    showVirusTotalPanel(popup, "missing-key");
+  } else if (vtState === "error") {
+    showVirusTotalPanel(popup, "error");
+  }
+
+  if (vtState !== "skipped") {
+    schedulePopupPosition(popup, link);
   }
 }
 
@@ -1337,8 +1392,10 @@ function renderBlockActions(popup, link, url) {
   });
 }
 
-function setPopupDone(popup, result, link, url) {
+function setPopupDone(popup, result, link, url, guardyResult = result, behaviorDecision = result.decision) {
   const decision = DECISION_META[result.decision] || DECISION_META.WARN;
+  const actionDecision = getEffectiveDecision(result.decision, behaviorDecision);
+  popup.guardyResult = guardyResult;
 
   popup.popup.classList.remove("decision-allow", "decision-warn", "decision-block");
   popup.popup.classList.add(decision.className);
@@ -1351,9 +1408,9 @@ function setPopupDone(popup, result, link, url) {
   renderBrand(popup, result.matched_brand);
   clearActions(popup);
 
-  if (result.decision === "ALLOW") {
+  if (actionDecision === "ALLOW") {
     renderAllowActions(popup, link, url);
-  } else if (result.decision === "BLOCK") {
+  } else if (actionDecision === "BLOCK") {
     renderBlockActions(popup, link, url);
   } else {
     renderWarnActions(popup, link, url);
@@ -1420,21 +1477,25 @@ async function handleLinkClick(event) {
       source: "clicked_link"
     });
 
-    if (result.decision === "ALLOW") {
-      rememberAllowedUrl(url);
+    const { state: vtState, result: vtResult } = await getAutomaticVirusTotalResult(api, url, settings);
+    const effectiveDecision = getEffectiveDecision(result.decision, vtResult?.vt_decision);
 
+    if (effectiveDecision === "ALLOW") {
+      rememberAllowedUrl(url);
+    } else {
+      forgetAllowedUrl(url);
+    }
+
+    if (effectiveDecision === "ALLOW") {
       if (settings.safeLinkMode === "toast") {
         showAllowToast(url, settings.theme);
-        runVirusTotalForToast(api, url, settings);
         return;
       }
     }
 
     const popup = showCheckingPopup(link, url, settings.theme);
-    setPopupDone(popup, result, link, url);
-    if (settings.alwaysScanVirusTotal) {
-      runVirusTotalForPopup(api, popup, url, link, settings);
-    }
+    setPopupDone(popup, result, link, url, result, effectiveDecision);
+    showAutomaticVirusTotalPanel(popup, vtState, vtResult, link);
   } catch (error) {
     followLink(link, url);
   }
