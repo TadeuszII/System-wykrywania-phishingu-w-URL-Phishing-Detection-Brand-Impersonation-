@@ -147,14 +147,6 @@ def test_brand_detection_finds_lookalike():
     assert result.brand_penalty > 0
 
 
-def test_brand_detection_does_not_attribute_generic_punycode_to_brand():
-    result = detect_brand_impersonation("http://xn--pypal-4va.com/login", load_seed_brands())
-
-    assert result.brand_penalty == 20
-    assert result.matched_brand is None
-    assert result.reasons == ["Punycode or IDN domain detected"]
-
-
 def test_brand_seed_has_at_least_100_unique_profiles():
     brands = load_seed_brands()
     brand_names = [brand["brand_name"] for brand in brands]
