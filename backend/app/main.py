@@ -29,6 +29,7 @@ from app.models import (
 from app.scanner.brand_detector import detect_brand_impersonation, hostname_from_url, is_official_domain
 from app.scanner.decision_engine import build_decision, decide_from_score
 from app.scanner.ml_model import get_ml_status, predict_ml_score
+from app.scanner.normalization import normalize_scan_url
 from app.scanner.url_analyzer import analyze_url
 
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "admin_api_key")
@@ -90,7 +91,8 @@ def health_check(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 @app.post("/scan/url", response_model=ScanResult)
 def scan_url(payload: ScanRequest, db: Session = Depends(get_db)) -> ScanResult:
-    rule_analysis = analyze_url(payload.url)
+    normalized_url = normalize_scan_url(payload.url)
+    rule_analysis = analyze_url(normalized_url)
 
     if not rule_analysis.is_valid_url:
         result = ScanResult(
@@ -104,8 +106,8 @@ def scan_url(payload: ScanRequest, db: Session = Depends(get_db)) -> ScanResult:
         return result
 
     brands = list(db.scalars(select(BrandProfileORM)).all())
-    brand_detection = detect_brand_impersonation(payload.url, brands)
-    ml_score = predict_ml_score(payload.url)
+    brand_detection = detect_brand_impersonation(normalized_url, brands)
+    ml_score = predict_ml_score(normalized_url)
     decision = build_decision(
         rule_score=rule_analysis.rule_score,
         rule_reasons=rule_analysis.reasons,
@@ -116,7 +118,7 @@ def scan_url(payload: ScanRequest, db: Session = Depends(get_db)) -> ScanResult:
     )
     risk_score = decision.risk_score
     decision_value = decision.decision
-    if should_apply_official_auth_cap(payload.url, brands, rule_analysis.reasons, brand_detection.brand_penalty):
+    if should_apply_official_auth_cap(normalized_url, brands, rule_analysis.reasons, brand_detection.brand_penalty):
         risk_score = min(risk_score, OFFICIAL_AUTH_KEYWORD_CAP)
         decision_value = decide_from_score(risk_score)
 

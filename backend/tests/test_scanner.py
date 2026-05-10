@@ -21,6 +21,7 @@ from app.audit import resolve_source, verify_chain
 from app.database import SessionLocal
 from app.main import app
 from app.scanner.brand_detector import detect_brand_impersonation
+from app.scanner.normalization import normalize_scan_url
 from app.scanner.url_analyzer import analyze_url
 
 
@@ -47,6 +48,13 @@ def test_rules_allow_safe_url():
     result = analyze_url("https://www.google.com")
     assert result.rule_score == 0
     assert result.reasons == ["No suspicious patterns detected"]
+
+
+def test_normalize_scan_url_removes_only_root_slash():
+    assert normalize_scan_url("https://www.google.com/") == "https://www.google.com"
+    assert normalize_scan_url("https://www.google.com/login") == "https://www.google.com/login"
+    assert normalize_scan_url("https://www.google.com/path/") == "https://www.google.com/path/"
+    assert normalize_scan_url("https://www.google.com/search?q=test") == "https://www.google.com/search?q=test"
 
 
 def test_rules_detect_url_shortener():
@@ -236,6 +244,23 @@ def test_scan_url_warns_on_invalid_url():
     payload = response.json()
     assert payload["decision"] == "WARN"
     assert "Invalid URL format" in payload["reasons"]
+
+
+def test_scan_url_scores_root_slash_variants_consistently():
+    with TestClient(app) as client:
+        www_response = client.post("/scan/url", json={"url": "https://www.google.com"})
+        www_slash_response = client.post("/scan/url", json={"url": "https://www.google.com/"})
+        bare_response = client.post("/scan/url", json={"url": "https://google.com"})
+        bare_slash_response = client.post("/scan/url", json={"url": "https://google.com/"})
+
+    assert www_response.status_code == 200
+    assert www_slash_response.status_code == 200
+    assert bare_response.status_code == 200
+    assert bare_slash_response.status_code == 200
+    assert www_response.json()["risk_score"] == www_slash_response.json()["risk_score"]
+    assert www_response.json()["decision"] == www_slash_response.json()["decision"]
+    assert bare_response.json()["risk_score"] == bare_slash_response.json()["risk_score"]
+    assert bare_response.json()["decision"] == bare_slash_response.json()["decision"]
 
 
 def test_scan_url_blocks_phishing_url():
