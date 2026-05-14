@@ -271,7 +271,7 @@ if __name__ == '__main__':
         assert len(result) == 40, f'Expected 40, got {len(result)}'
         print(f'\nURL: {u}')
         print(dict(zip(FEATURE_NAMES, result)))
-    print(f'\n✅ All checks passed — Feature count: {len(FEATURE_NAMES)}')
+    print(f'\nAll checks passed — Feature count: {len(FEATURE_NAMES)}')
 
 # ==============================================================================
 # Step 4 — Load Dataset
@@ -377,7 +377,6 @@ else:
 train_balanced = pd.concat([train_legit, train_phish])
 train_balanced = train_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
 
-# FIX — keep as DataFrame, don't use .values
 X_train_bal = train_balanced.drop('label', axis=1)
 y_train_bal  = train_balanced['label']
 
@@ -409,14 +408,6 @@ model.fit(
 )
 print('\nTraining complete.')
 
-
-
-"""## Step 7 — Evaluate Model
-
-> Add blockquote
-
-
-"""
 
 y_pred = model.predict(X_test)
 y_prob = model.predict_proba(X_test)[:,1]
