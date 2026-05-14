@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from urllib import parse
 
 TEST_DB = Path(tempfile.gettempdir()) / f"guardy_test_{os.getpid()}.db"
 if TEST_DB.exists():
@@ -15,10 +16,12 @@ BRANDS_SEED_PATH = BACKEND_DIR / "seed_data" / "brands.json"
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["ADMIN_API_KEY"] = "test_admin_key"
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.audit import resolve_source, verify_chain
 from app.database import SessionLocal
+import app.main as main_module
 from app.main import app
 from app.scanner.brand_detector import detect_brand_impersonation
 from app.scanner.normalization import normalize_scan_url
@@ -433,6 +436,87 @@ def test_scan_url_keeps_free_hosting_and_typo_phishing_risky():
     assert hosting_response.json()["decision"] == "BLOCK"
     assert typo_response.status_code == 200
     assert typo_response.json()["decision"] != "ALLOW"
+
+
+class FakeVTResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+
+def test_virustotal_submits_url_when_report_is_missing(monkeypatch):
+    calls = []
+
+    def fake_urlopen(api_request, timeout):
+        calls.append(api_request)
+        if len(calls) == 1:
+            raise main_module.error.HTTPError(
+                api_request.full_url,
+                404,
+                "Not Found",
+                hdrs=None,
+                fp=None,
+            )
+        if len(calls) == 2:
+            return FakeVTResponse({"data": {"id": "analysis-123"}})
+        return FakeVTResponse(
+            {
+                "data": {
+                    "attributes": {
+                        "status": "completed",
+                        "stats": {
+                            "malicious": 4,
+                            "suspicious": 2,
+                            "harmless": 80,
+                            "undetected": 4,
+                        },
+                    }
+                }
+            }
+        )
+
+    monkeypatch.setattr(main_module.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(main_module.time, "sleep", lambda _seconds: None)
+
+    result = main_module.fetch_virustotal_result("http://paypal-secure-login.xyz/verify", "vt-key")
+
+    assert [call.get_method() for call in calls] == ["GET", "POST", "GET"]
+    assert calls[1].full_url == "https://www.virustotal.com/api/v3/urls"
+    assert parse.parse_qs(calls[1].data.decode("utf-8")) == {
+        "url": ["http://paypal-secure-login.xyz/verify"]
+    }
+    assert calls[2].full_url == "https://www.virustotal.com/api/v3/analyses/analysis-123"
+    assert result.engines_flagged == 6
+    assert result.engines_total == 90
+    assert result.vt_categories == []
+    assert result.vt_permalink
+
+
+def test_virustotal_key_error_is_not_returned_as_demo_fallback(monkeypatch):
+    def fake_urlopen(api_request, timeout):
+        raise main_module.error.HTTPError(
+            api_request.full_url,
+            401,
+            "Unauthorized",
+            hdrs=None,
+            fp=None,
+        )
+
+    monkeypatch.setattr(main_module.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(main_module.HTTPException) as exc:
+        main_module.fetch_virustotal_result("https://www.google.com", "bad-key")
+
+    assert exc.value.status_code == 502
+    assert exc.value.detail == "VirusTotal rejected the API key"
 
 
 def test_admin_brands_requires_api_key():

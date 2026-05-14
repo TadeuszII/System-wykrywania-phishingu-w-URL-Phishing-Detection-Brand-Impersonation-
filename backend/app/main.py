@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 import base64
 import json
 import os
-from urllib import error, request
+import time
+from urllib import error, parse, request
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
@@ -33,7 +34,9 @@ from app.scanner.normalization import normalize_scan_url
 from app.scanner.url_analyzer import analyze_url
 
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "admin_api_key")
-VT_TIMEOUT_SECONDS = 8
+VT_MAX_WAIT_SECONDS = 50
+VT_REQUEST_TIMEOUT_SECONDS = 8
+VT_POLL_INTERVAL_SECONDS = 2
 OFFICIAL_AUTH_KEYWORD_CAP = 25
 OFFICIAL_AUTH_KEYWORD_REASONS = {
     "Suspicious keyword detected: account",
@@ -180,48 +183,145 @@ def scan_virustotal(
 
 
 def fetch_virustotal_result(url: str, vt_key: str) -> VTResult:
+    deadline = time.monotonic() + VT_MAX_WAIT_SECONDS
+    url_id = build_vt_url_id(url)
+
     try:
-        url_id = base64.urlsafe_b64encode(url.encode("utf-8")).decode("utf-8").strip("=")
-        api_request = request.Request(
-            f"https://www.virustotal.com/api/v3/urls/{url_id}",
-            headers={"x-apikey": vt_key},
-            method="GET",
-        )
-        with request.urlopen(api_request, timeout=VT_TIMEOUT_SECONDS) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        return fetch_vt_url_report(url_id, vt_key, deadline)
+    except error.HTTPError as exc:
+        if exc.code != status.HTTP_404_NOT_FOUND:
+            raise build_vt_http_exception(exc) from exc
+    except (OSError, error.URLError, TimeoutError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="VirusTotal request failed",
+        ) from exc
+    except (ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="VirusTotal returned an unexpected response",
+        ) from exc
+
+    try:
+        analysis_id = submit_vt_url(url, vt_key, deadline)
+        return wait_for_vt_analysis(analysis_id, vt_key, url_id, deadline)
+    except error.HTTPError as exc:
+        raise build_vt_http_exception(exc) from exc
+    except (OSError, error.URLError, TimeoutError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="VirusTotal request failed",
+        ) from exc
+    except (ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="VirusTotal returned an unexpected response",
+        ) from exc
+
+
+def build_vt_url_id(url: str) -> str:
+    return base64.urlsafe_b64encode(url.encode("utf-8")).decode("utf-8").strip("=")
+
+
+def fetch_vt_url_report(url_id: str, vt_key: str, deadline: float) -> VTResult:
+    api_request = request.Request(
+        f"https://www.virustotal.com/api/v3/urls/{url_id}",
+        headers={"x-apikey": vt_key},
+        method="GET",
+    )
+    payload = read_vt_json(api_request, deadline)
+    attributes = payload.get("data", {}).get("attributes", {})
+    stats = attributes.get("last_analysis_stats", {})
+    categories = attributes.get("categories", {})
+    return build_vt_result_from_stats(
+        stats=stats,
+        categories=sorted(set(str(value) for value in categories.values() if value)),
+        permalink=f"https://www.virustotal.com/gui/url/{url_id}",
+    )
+
+
+def submit_vt_url(url: str, vt_key: str, deadline: float) -> str:
+    body = parse.urlencode({"url": url}).encode("utf-8")
+    api_request = request.Request(
+        "https://www.virustotal.com/api/v3/urls",
+        data=body,
+        headers={
+            "x-apikey": vt_key,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    payload = read_vt_json(api_request, deadline)
+    analysis_id = payload.get("data", {}).get("id")
+    if not analysis_id:
+        raise KeyError("VirusTotal analysis id missing")
+    return str(analysis_id)
+
+
+def wait_for_vt_analysis(analysis_id: str, vt_key: str, url_id: str, deadline: float) -> VTResult:
+    while time.monotonic() < deadline:
+        payload = fetch_vt_analysis(analysis_id, vt_key, deadline)
         attributes = payload.get("data", {}).get("attributes", {})
-        stats = attributes.get("last_analysis_stats", {})
-        categories = attributes.get("categories", {})
-        flagged = int(stats.get("malicious", 0)) + int(stats.get("suspicious", 0))
-        harmless = int(stats.get("harmless", 0))
-        undetected = int(stats.get("undetected", 0))
-        total = flagged + harmless + undetected
-        return build_vt_result(
-            engines_total=total,
-            engines_flagged=flagged,
-            categories=sorted(set(str(value) for value in categories.values() if value)),
-            permalink=f"https://www.virustotal.com/gui/url/{url_id}",
-        )
-    except (OSError, error.URLError, error.HTTPError, TimeoutError, ValueError, KeyError, json.JSONDecodeError):
-        return build_vt_fallback(url)
+        if attributes.get("status") == "completed":
+            return build_vt_result_from_stats(
+                stats=attributes.get("stats", {}),
+                categories=[],
+                permalink=f"https://www.virustotal.com/gui/url/{url_id}",
+            )
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(VT_POLL_INTERVAL_SECONDS, remaining))
+
+    raise HTTPException(
+        status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        detail="VirusTotal analysis did not finish in time",
+    )
 
 
-def build_vt_fallback(url: str) -> VTResult:
-    lowered_url = url.lower()
-    suspicious_markers = ["login", "verify", "account", "secure", "password", "xn--", "bit.ly", ".xyz", ".tk"]
-    flagged = min(6, sum(1 for marker in suspicious_markers if marker in lowered_url))
-    if flagged == 0:
-        total = 90
-    elif flagged <= 2:
-        total = 90
+def fetch_vt_analysis(analysis_id: str, vt_key: str, deadline: float) -> dict[str, Any]:
+    api_request = request.Request(
+        f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
+        headers={"x-apikey": vt_key},
+        method="GET",
+    )
+    return read_vt_json(api_request, deadline)
+
+
+def read_vt_json(api_request: request.Request, deadline: float) -> dict[str, Any]:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("VirusTotal request deadline exceeded")
+    timeout_seconds = min(VT_REQUEST_TIMEOUT_SECONDS, remaining)
+    with request.urlopen(api_request, timeout=timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def build_vt_http_exception(exc: error.HTTPError) -> HTTPException:
+    if exc.code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
+        detail = "VirusTotal rejected the API key"
+    elif exc.code == status.HTTP_429_TOO_MANY_REQUESTS:
+        detail = "VirusTotal rate limit exceeded"
     else:
-        flagged = 6
-        total = 90
+        detail = f"VirusTotal returned HTTP {exc.code}"
+    return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+
+def build_vt_result_from_stats(
+    stats: dict[str, Any],
+    categories: list[str],
+    permalink: str | None,
+) -> VTResult:
+    flagged = int(stats.get("malicious", 0)) + int(stats.get("suspicious", 0))
+    harmless = int(stats.get("harmless", 0))
+    undetected = int(stats.get("undetected", 0))
+    total = flagged + harmless + undetected
     return build_vt_result(
         engines_total=total,
         engines_flagged=flagged,
-        categories=["fallback-demo"] if flagged else [],
-        permalink=None,
+        categories=categories,
+        permalink=permalink,
     )
 
 
